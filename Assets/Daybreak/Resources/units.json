@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "units": [
+    { "id": "aegis",       "name": "Aegis",          "arch": "Vanguard",   "tag": "Guardian", "hp": 130, "atk": 13, "def": 10, "spd": 4 },
+    { "id": "warhound",    "name": "Warhound Alpha", "arch": "Vanguard",   "tag": "Pack",     "hp": 118, "atk": 16, "def": 8,  "spd": 5 },
+    { "id": "runeshield",  "name": "Runeshield",     "arch": "Vanguard",   "tag": "Arcane",   "hp": 120, "atk": 14, "def": 8,  "spd": 4 },
+    { "id": "charger",     "name": "Charger",        "arch": "Vanguard",   "tag": "Swift",    "hp": 110, "atk": 15, "def": 7,  "spd": 6 },
+    { "id": "sentinel",    "name": "Sentinel Blade", "arch": "Skirmisher", "tag": "Guardian", "hp": 78,  "atk": 20, "def": 5,  "spd": 8 },
+    { "id": "ripper",      "name": "Ripper",         "arch": "Skirmisher", "tag": "Pack",     "hp": 70,  "atk": 24, "def": 3,  "spd": 9 },
+    { "id": "hexblade",    "name": "Hexblade",       "arch": "Skirmisher", "tag": "Arcane",   "hp": 70,  "atk": 21, "def": 3,  "spd": 9 },
+    { "id": "flicker",     "name": "Flicker",        "arch": "Skirmisher", "tag": "Swift",    "hp": 64,  "atk": 22, "def": 2,  "spd": 11 },
+    { "id": "pavise",      "name": "Pavise",         "arch": "Marksman",   "tag": "Guardian", "hp": 62,  "atk": 24, "def": 4,  "spd": 5 },
+    { "id": "houndmaster", "name": "Houndmaster",    "arch": "Marksman",   "tag": "Pack",     "hp": 55,  "atk": 28, "def": 2,  "spd": 6 },
+    { "id": "arcanist",    "name": "Arcanist",       "arch": "Marksman",   "tag": "Arcane",   "hp": 55,  "atk": 25, "def": 2,  "spd": 6 },
+    { "id": "windrunner",  "name": "Windrunner",     "arch": "Marksman",   "tag": "Swift",    "hp": 50,  "atk": 26, "def": 1,  "spd": 8 }
+  ]
+}
