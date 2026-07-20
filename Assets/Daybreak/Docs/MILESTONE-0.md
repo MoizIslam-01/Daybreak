@@ -1,9 +1,12 @@
-# Milestone 0 — Foundations
+# Milestone 0 — Foundations ✅
 
 **Goal (from the design guide):** you can sign in and call a trivial server module from the app.
 
-Everything that can be done in code is done. What's left is the part that needs your Unity Editor
-and your UGS dashboard — roughly 20–30 minutes.
+**Status: done** (20 Jul 2026). Verified end to end — anonymous sign-in returns a real UGS player
+id, and the deployed Cloud Code module reports `server sees 12 units`, proving it compiled
+`Daybreak.Sim` and read the same `units.json` the client did.
+
+Steps below are kept as the rebuild/onboarding path.
 
 ---
 
@@ -81,15 +84,31 @@ defines light up on their own — check that `AuthService.cs` is no longer greye
 
 ## Step 4 — Deploy the Cloud Code module
 
-The safest path is to let Unity generate the module scaffold, then point it at our source:
+The module project already exists at `CloudCode/`, matched to Unity's template. You just need to
+point Unity at it:
 
-1. `Assets → Create → Cloud Code C# Module Reference`, name it **Daybreak**.
-2. Unity generates a module solution. Open the generated `.csproj` and compare it to
-   `CloudCode/Daybreak/Daybreak.csproj` — **copy the generated `TargetFramework` and the three
-   `Unity.Services.CloudCode.*` package versions into ours** (ours are placeholders on purpose;
-   the template is authoritative).
-3. Point the `.ccmr` reference file at `CloudCode/Daybreak/Daybreak.csproj`.
-4. `Window → Deployment` → tick the Daybreak module → **Deploy**.
+1. `Assets → Create → Cloud Code C# Module Reference`, name it **Daybreak**. The name must match
+   `CloudCodeService.ModuleName` exactly — it's case-sensitive.
+2. Select the `.ccmr` asset. Its **Path** field wants a **`.sln`**, not a `.csproj`. Browse to
+   `CloudCode/Daybreak.sln` and hit **Apply**.
+3. `Window → Deployment` → tick Daybreak → **Deploy Selected**.
+
+**Do not click "Generate Solution"** unless you want to inspect a fresh template — it scaffolds a
+throwaway project at `../new_module_reference/` that has nothing to do with ours.
+
+### What the template taught us (already applied to `CloudCode/Daybreak/Daybreak.csproj`)
+
+| Setting | Value | Note |
+|---|---|---|
+| `TargetFramework` | `net9.0` | not net8.0 |
+| `Com.Unity.Services.CloudCode.Apis` | `0.0.26` | note the capital `Com.` prefix |
+| `Com.Unity.Services.CloudCode.Core` | **`0.0.4`** | the template pins `0.0.5`, which was never published to nuget.org — restore fails with NU1102. Don't "correct" this back. |
+| `Microsoft.Extensions.Logging.Abstractions` | `7.0.1` | for the injected `ILogger` |
+
+There is no `Unity.Services.CloudCode.Shared` package, despite what older docs suggest.
+
+`Nullable` and `ImplicitUsings` are **off** in our project (the template turns them on) because the
+shared sim source uses explicit usings and no nullable annotations.
 
 ## Step 5 — Prove the round trip
 
