@@ -57,7 +57,18 @@ defines light up on their own — check that `AuthService.cs` is no longer greye
 1. Sign in to <https://cloud.unity.com> and create an organization if you don't have one.
 2. Create a project named **Daybreak**.
 3. In Unity: `Edit → Project Settings → Services` → link to that project.
-4. On the dashboard, enable **Authentication** and turn on **Anonymous** sign-in.
+4. On the dashboard, go to **LiveOps → Authentication** and enable the service if prompted.
+
+   There is **no anonymous sign-in toggle** — anonymous requires no identity provider, so it works
+   the moment the project is linked and the service is on. The *Identity Providers* page is for
+   external providers (Google, Apple, Steam), which a friend group doesn't need.
+
+   Do check **LiveOps → Environments**: `production` exists by default, and the Editor's
+   environment (`Project Settings → Services → Environment`) must match wherever you deploy the
+   Cloud Code module in step 4 — otherwise the module call 404s.
+
+   Sanity check after step 3: your anonymous player should appear under
+   **LiveOps → Authentication → Players** with the same id the Console printed.
 
 ## Step 3 — Create the Boot scene
 
