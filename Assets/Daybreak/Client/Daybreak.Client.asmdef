@@ -2,7 +2,11 @@
     "name": "Daybreak.Client",
     "rootNamespace": "Daybreak.Client",
     "references": [
-        "Daybreak.Sim"
+        "Daybreak.Sim",
+        "Unity.Services.Core",
+        "Unity.Services.Authentication",
+        "Unity.Services.CloudCode",
+        "Unity.Services.CloudSave"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -26,6 +30,11 @@
             "name": "com.unity.services.cloudcode",
             "expression": "1.0.0",
             "define": "DAYBREAK_UGS_CLOUDCODE"
+        },
+        {
+            "name": "com.unity.services.cloudsave",
+            "expression": "1.0.0",
+            "define": "DAYBREAK_UGS_CLOUDSAVE"
         }
     ],
     "noEngineReferences": false
