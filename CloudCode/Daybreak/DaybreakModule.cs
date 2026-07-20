@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Unity.Services.CloudCode.Core;
 
 namespace Daybreak.CloudCode
@@ -10,16 +10,28 @@ namespace Daybreak.CloudCode
     /// </summary>
     public class DaybreakModule
     {
-        [CloudCodeFunction("SayHello")]
-        public HelloWorldResponse SayHello(IExecutionContext ctx, string name)
+        private readonly ILogger<DaybreakModule> _logger;
+
+        public DaybreakModule(ILogger<DaybreakModule> logger)
         {
+            _logger = logger;
+        }
+
+        [CloudCodeFunction("SayHello")]
+        public HelloWorldResponse SayHello(IExecutionContext context, string name)
+        {
+            // Reading the sim here is the real assertion: if Daybreak.Sim had picked up a Unity
+            // dependency, this module would not have compiled at all.
+            var unitCount = UnitConfig.Units.Count;
+
+            _logger.LogInformation("SayHello called by {PlayerId}; sim exposes {UnitCount} units.",
+                context.PlayerId, unitCount);
+
             return new HelloWorldResponse
             {
                 Message = $"Hello, {name}! Daybreak's server module is alive.",
-                PlayerId = ctx.PlayerId,
-                // Reading the sim here is the real assertion: if Daybreak.Sim had a Unity
-                // dependency, this module would not have compiled at all.
-                SimUnitCount = UnitConfig.Units.Count
+                PlayerId = context.PlayerId,
+                SimUnitCount = unitCount
             };
         }
     }
