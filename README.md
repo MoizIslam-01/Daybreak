@@ -99,8 +99,8 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 | | Milestone | Done when | Status |
 |---|---|---|---|
 | **M0** | **Foundations** | Sign in and call a server module from the app | ✅ Complete |
-| M1 | The sim | Same seed → byte-identical event log; battles feel sensible | ⬜ Next |
-| M2 | Replay renderer | You can watch a fight play out and it reads clearly | ⬜ |
+| **M1** | **The sim** | Same seed → byte-identical event log; battles feel sensible | ✅ Complete |
+| M2 | Replay renderer | You can watch a fight play out and it reads clearly | ⬜ Next |
 | M3 | Squad builder + practice | Full offline loop: build → watch | ⬜ |
 | M4 | Server resolve loop | Two players lock squads and wake to correct results — **the game is live** | ⬜ |
 | M5 | Social + notifications | Teams, leaderboards, push on resolve, auto-repeat for no-shows | ⬜ |
@@ -108,6 +108,21 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 
 Post-launch ideas: active abilities, a second tag per unit, more units and weekly modifiers,
 seasonal cosmetics.
+
+### What M1 delivered
+
+- `BattleSimulator.Simulate` — the full round-based resolver from the design spec
+- The archetype counter triangle, the four synergies with 2/3-copy tiers, and all four tactics
+- The complete targeting model: reach filter (melee/ranged) then per-tactic selection, with every
+  tiebreak ending in instance index so outcomes are total-ordered and reproducible
+- Integer damage pipeline (permille multipliers, min-1 clamp, arcane true damage) and the
+  effective-stats order: synergy → Berserk → weekly modifier
+- Win by elimination, the 30-round cap resolved on remaining-HP percentage (float-free
+  cross-multiplication), and a seeded coin flip so there are never draws
+- All four example weekly modifiers (Entrenched, Glass Cannons, Vanguard's Hour, Arcane Surge)
+- A pure text formatter that prints a battle blow-by-blow, plus a harness to eyeball it
+- Determinism proven in CI: same inputs + seed → byte-identical event log, across every
+  tactic × modifier combination
 
 ### What M0 delivered
 

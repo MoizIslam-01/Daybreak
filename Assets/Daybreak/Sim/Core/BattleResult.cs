@@ -12,13 +12,8 @@ namespace Daybreak.Sim
         public int WinnerSide;
         public BattleEvent[] Log;
         public int Seed;
-    }
 
-    /// <summary>The weekly rule twist, applied at battle start. Params stay data-driven.</summary>
-    public sealed class WeeklyModifier
-    {
-        public static readonly WeeklyModifier None = new WeeklyModifier { Id = "none" };
-
-        public string Id;
+        /// <summary>Convenience for tests/harness: the last event, always a BattleEnd.</summary>
+        public bool WonByA => WinnerSide == SideA;
     }
 }
