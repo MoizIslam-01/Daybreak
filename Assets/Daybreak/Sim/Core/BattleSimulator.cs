@@ -118,8 +118,17 @@ namespace Daybreak.Sim
             {
                 WinnerSide = winner,
                 Log = log.ToArray(),
-                Seed = seed
+                Seed = seed,
+                WinnerRemainingHp = SumRemainingHp(units, winner)
             };
+        }
+
+        private static int SumRemainingHp(UnitInstance[] units, int side)
+        {
+            int sum = 0;
+            for (int i = 0; i < units.Length; i++)
+                if (units[i].Side == side && units[i].CurHp > 0) sum += units[i].CurHp;
+            return sum;
         }
 
         public static int ArchetypeMultiplierPermille(Archetype attacker, Archetype defender)

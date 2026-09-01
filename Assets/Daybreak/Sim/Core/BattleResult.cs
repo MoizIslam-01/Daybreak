@@ -13,6 +13,9 @@ namespace Daybreak.Sim
         public BattleEvent[] Log;
         public int Seed;
 
+        /// <summary>Winner's summed remaining HP — the weekly leaderboard tiebreak (guide §6.2).</summary>
+        public int WinnerRemainingHp;
+
         /// <summary>Convenience for tests/harness: the last event, always a BattleEnd.</summary>
         public bool WonByA => WinnerSide == SideA;
     }

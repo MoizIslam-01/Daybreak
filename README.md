@@ -101,13 +101,21 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 | **M0** | **Foundations** | Sign in and call a server module from the app | ✅ Complete |
 | **M1** | **The sim** | Same seed → byte-identical event log; battles feel sensible | ✅ Complete |
 | **M2** | **Replay renderer** | You can watch a fight play out and it reads clearly | ✅ Complete |
-| M3 | Squad builder + practice | Full offline loop: build → watch | ⬜ Next |
-| M4 | Server resolve loop | Two players lock squads and wake to correct results — **the game is live** | ⬜ |
+| **M3** | **Squad builder + practice** | Full offline loop: build → watch | ✅ Complete |
+| M4 | Server resolve loop | Two players lock squads and wake to correct results — **the game is live** | ⬜ Next |
 | M5 | Social + notifications | Teams, leaderboards, push on resolve, auto-repeat for no-shows | ⬜ |
 | M6 | Rewards & liveops | A full weekly cycle runs itself end to end | ⬜ |
 
 Post-launch ideas: active abilities, a second tag per unit, more units and weekly modifiers,
 seasonal cosmetics.
+
+### What M3 delivered
+
+- `SquadDraft` in the sim — the 2×3 draft state and legal-squad rules, unit-tested
+- A one-component squad builder (IMGUI): roster, front/back grid placement, tactic picker, and a
+  live synergy preview that updates as you build
+- Local practice against preset opponents that runs the real sim and plays the result through the
+  M2 renderer — the full offline **build → watch → adjust** loop, no server involved
 
 ### What M2 delivered
 
