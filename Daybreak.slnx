@@ -1,5 +1,5 @@
 ﻿<Solution>
   <Project Path="Daybreak.Sim.csproj" />
-  <Project Path="Daybreak.Sim.Tests.csproj" />
   <Project Path="Daybreak.Client.csproj" />
+  <Project Path="Daybreak.Sim.Tests.csproj" />
 </Solution>

@@ -100,14 +100,23 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 |---|---|---|---|
 | **M0** | **Foundations** | Sign in and call a server module from the app | ✅ Complete |
 | **M1** | **The sim** | Same seed → byte-identical event log; battles feel sensible | ✅ Complete |
-| M2 | Replay renderer | You can watch a fight play out and it reads clearly | ⬜ Next |
-| M3 | Squad builder + practice | Full offline loop: build → watch | ⬜ |
+| **M2** | **Replay renderer** | You can watch a fight play out and it reads clearly | ✅ Complete |
+| M3 | Squad builder + practice | Full offline loop: build → watch | ⬜ Next |
 | M4 | Server resolve loop | Two players lock squads and wake to correct results — **the game is live** | ⬜ |
 | M5 | Social + notifications | Teams, leaderboards, push on resolve, auto-repeat for no-shows | ⬜ |
 | M6 | Rewards & liveops | A full weekly cycle runs itself end to end | ⬜ |
 
 Post-launch ideas: active abilities, a second tag per unit, more units and weekly modifiers,
 seasonal cosmetics.
+
+### What M2 delivered
+
+- A procedural replay renderer — colored squares on two facing 2×3 grids, no imported art
+- `ReplayPlayer` consumes a `BattleEvent[]` and animates lunges, HP bars, floating damage
+  numbers and deaths; it owns no game logic and re-animates whatever the sim decided
+- Archetype colors, tag pips, and matchup-tinted damage numbers so a fight reads at a glance
+- One-component setup (`ReplayDemo`) that runs a real sim battle locally and plays it, with
+  in-scene Replay and 1×/2×/4× speed controls
 
 ### What M1 delivered
 

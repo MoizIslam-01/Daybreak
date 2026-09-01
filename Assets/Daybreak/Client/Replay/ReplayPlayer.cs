@@ -33,12 +33,23 @@ namespace Daybreak.Client
         private string _status = "";
         private int _round;
         private bool _finished;
+        private bool _active;   // false until Play(); Clear() hides the renderer and its controls
 
         /// <summary>Render a resolved battle. Rebuilds the scene and starts playback.</summary>
         public void Play(Squad a, Squad b, WeeklyModifier mod, BattleResult result, UnitCatalog defs)
         {
             _a = a; _b = b; _mod = mod; _result = result; _defs = defs;
+            _active = true;
             Restart();
+        }
+
+        /// <summary>Tear down the replay and hide its controls (used when returning to the builder).</summary>
+        public void Clear()
+        {
+            _active = false;
+            if (_playback != null) { StopCoroutine(_playback); _playback = null; }
+            if (_root != null) { Destroy(_root.gameObject); _root = null; }
+            for (int i = 0; i < _views.Length; i++) _views[i] = null;
         }
 
         public void Restart()
@@ -151,6 +162,7 @@ namespace Daybreak.Client
 
         private void OnGUI()
         {
+            if (!_active) return;
             const int pad = 10;
             GUI.Label(new Rect(pad, pad, 600, 24),
                 "Daybreak replay — " + _status + (_finished ? "  (done)" : ""));
