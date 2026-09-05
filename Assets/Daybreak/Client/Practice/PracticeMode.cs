@@ -198,6 +198,8 @@ namespace Daybreak.Client
             if (GUILayout.Button("Resolve now")) ResolveNow();
             if (GUILayout.Button("My result")) RefreshResult();
             GUILayout.EndHorizontal();
+            if (GUILayout.Button("New test player (2nd account)")) NewTestPlayer();
+            if (GUILayout.Button("Reset roster (dev)")) ResetRoster();
             GUILayout.Label(_serverStatus);
 
             GUILayout.Space(10);
@@ -242,6 +244,24 @@ namespace Daybreak.Client
                 _serverStatus = res == null ? "No result stored yet." : ("You went " + res.wins + "-" + res.losses);
             }
             catch (Exception e) { _serverStatus = "Read error: " + e.Message; }
+        }
+
+        private async void NewTestPlayer()
+        {
+            _serverStatus = "Creating new test player...";
+            try
+            {
+                var id = await AuthService.SwitchToNewAnonymousPlayerAsync();
+                _serverStatus = "Now signed in as NEW player: " + id + "  (lock a squad, then Resolve)";
+            }
+            catch (Exception e) { _serverStatus = "Switch error: " + e.Message; }
+        }
+
+        private async void ResetRoster()
+        {
+            _serverStatus = "Resetting roster...";
+            try { _serverStatus = await CloudCodeService.ResetRosterAsync(); }
+            catch (Exception e) { _serverStatus = "Reset error: " + e.Message; }
         }
 
         private void DrawSynergyPreview()

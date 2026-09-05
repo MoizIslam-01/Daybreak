@@ -27,6 +27,8 @@ namespace Daybreak.CloudCode
         private const string DayResultKey = "dayResult";
         private const string RosterCustomId = "daybreak";
         private const string RosterKey = "players";
+        private const string WeeklyKey = "weekly";
+        private const string LeaderboardId = "weekly_wins";
 
         private readonly ILogger<DaybreakModule> _logger;
 
@@ -112,6 +114,8 @@ namespace Daybreak.CloudCode
                 // Cross-player write (authenticated as Cloud Code).
                 await api.CloudSaveData.SetItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, pr.PlayerId,
                     new SetItemBody(DayResultKey, Json.To(resultDto)));
+
+                await UpdateWeekly(ctx, api, pr.PlayerId, day, pr.Wins);
             }
 
             _logger.LogInformation("ResolveDay {Day}: {Players} players, {Battles} battle-records written.",
@@ -124,7 +128,60 @@ namespace Daybreak.CloudCode
             };
         }
 
+        // ---- weekly wins + leaderboard ----
+
+        /// <summary>
+        /// Accumulates the player's wins for the current week in Cloud Save. Tracking the total
+        /// ourselves means the weekly reset is just the week number rolling over. This value is the
+        /// source of truth the leaderboard board will display — the actual leaderboard submit is
+        /// wired in M5 (the Leaderboards milestone), once the Cloud Code Leaderboards model type is
+        /// pinned to a matching SDK version. `weekly_wins` sort/update config is already set on the
+        /// dashboard and ready for it.
+        /// </summary>
+        private async Task UpdateWeekly(IExecutionContext ctx, IGameApiClient api,
+            string playerId, int day, int dayWins)
+        {
+            int week = GameCalendar.WeekNumber(day);
+
+            var raw = await ReadPlayerItem(ctx, api, playerId, WeeklyKey);
+            var record = Json.From<WeeklyRecord>(raw);
+            if (record == null || record.week != week)
+                record = new WeeklyRecord { week = week, wins = 0, lastDayCounted = -1 };
+
+            // Idempotent: only add a given day's wins once, even if the resolve fires again.
+            if (record.lastDayCounted == day) return;
+
+            record.wins += dayWins;
+            record.lastDayCounted = day;
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, playerId,
+                new SetItemBody(WeeklyKey, Json.To(record)));
+        }
+
+        /// <summary>Testing/admin: wipe the active-player roster (clears accumulated test accounts).</summary>
+        [CloudCodeFunction("ResetRoster")]
+        public async Task<string> ResetRoster(IExecutionContext ctx, IGameApiClient api)
+        {
+            await api.CloudSaveData.SetCustomItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, RosterCustomId,
+                new SetItemBody(RosterKey, "[]"));
+            return "Roster cleared.";
+        }
+
         // ---- Cloud Save helpers ----
+
+        private async Task<string> ReadPlayerItem(IExecutionContext ctx, IGameApiClient api, string playerId, string key)
+        {
+            try
+            {
+                var res = await api.CloudSaveData.GetItemsAsync(ctx, ctx.ServiceToken, ctx.ProjectId, playerId,
+                    new List<string> { key });
+                return res.Data.Results.FirstOrDefault(r => r.Key == key)?.Value?.ToString();
+            }
+            catch (ApiException e)
+            {
+                _logger.LogWarning("Read of '{Key}' for {PlayerId} failed: {Err}", key, playerId, e.Message);
+                return null;
+            }
+        }
 
         private async Task RegisterInRoster(IExecutionContext ctx, IGameApiClient api, string playerId)
         {
@@ -155,19 +212,16 @@ namespace Daybreak.CloudCode
 
         private async Task<SquadDto> ReadLockedSquad(IExecutionContext ctx, IGameApiClient api, string playerId)
         {
-            try
-            {
-                var res = await api.CloudSaveData.GetItemsAsync(ctx, ctx.ServiceToken, ctx.ProjectId, playerId,
-                    new List<string> { LockedSquadKey });
-                var raw = res.Data.Results.FirstOrDefault(r => r.Key == LockedSquadKey)?.Value?.ToString();
-                return Json.From<SquadDto>(raw);
-            }
-            catch (ApiException e)
-            {
-                _logger.LogWarning("Locked-squad read failed for {PlayerId}: {Err}", playerId, e.Message);
-                return null;
-            }
+            return Json.From<SquadDto>(await ReadPlayerItem(ctx, api, playerId, LockedSquadKey));
         }
+    }
+
+    /// <summary>Server-only: a player's running win total for one week.</summary>
+    public class WeeklyRecord
+    {
+        public int week;
+        public int wins;
+        public int lastDayCounted = -1; // guards against double-counting on repeated resolves
     }
 
     public class HelloWorldResponse

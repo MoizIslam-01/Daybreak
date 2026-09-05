@@ -20,6 +20,7 @@ namespace Daybreak.Client
         public const string HelloWorldEndpoint = "SayHello";
         public const string LockSquadEndpoint = "LockSquad";
         public const string ResolveDayEndpoint = "ResolveDay";
+        public const string ResetRosterEndpoint = "ResetRoster";
 
         [Serializable]
         public class LockResult { public bool ok; public int day; }
@@ -50,6 +51,18 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return new ResolveResult { day = 0, playersResolved = 0, battlesRun = 0 };
+#endif
+        }
+
+        /// <summary>Dev/admin: clear the active-player roster (removes accumulated test accounts).</summary>
+        public static async Task<string> ResetRosterAsync()
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<string>(ModuleName, ResetRosterEndpoint, new Dictionary<string, object>());
+#else
+            await Task.Yield();
+            return "stub";
 #endif
         }
 

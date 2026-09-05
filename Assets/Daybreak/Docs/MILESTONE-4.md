@@ -38,7 +38,12 @@ The Cloud Code module and the client both call this exact function. The server o
 - `DataService` (client) — save the locked squad, read your own day result (guarded stub until the
   Cloud Save package is confirmed).
 
-## Phase 3 — Server `ResolveDay` module ✅ (code done — deploy + test below)
+## Phase 3 — Server `ResolveDay` module ✅ (verified end to end)
+
+> Verified: two anonymous players locked squads, `ResolveDay` produced "2 players, 1 battle",
+> and each player read back a correct `dayResult`. Storage format is a JSON string on both sides
+> (client `JsonUtility`, server `System.Text.Json` with IncludeFields) so the field-based DTOs match.
+
 
 - `CloudCode/Daybreak/DaybreakModule.cs` gains two endpoints (plus the M0 `SayHello`):
   - **`LockSquad(squadJson)`** — validates against the shared rules, stores the player's own locked
@@ -61,11 +66,53 @@ The Cloud Code module and the client both call this exact function. The server o
 > Note: `ResolveDay` and `LockSquad` touch cross-player data. For a friend group this is fine, but
 > before any wider release, restrict them with Cloud Code **Access Control** (see the module docs).
 
-## Phase 4 — Scheduler + Leaderboards (dashboard)
+## Phase 4 — Scheduler + Leaderboards ✅ (module code done — dashboard steps below)
 
-- Scheduler cron `0 20 * * *` → Trigger → `ResolveDay`.
-- Individual weekly Leaderboard (team leaderboard is M5).
-- A manual "resolve now" path for testing without waiting for 20:00 UTC.
+### What the module now does
+
+- `ResolveDay` adds each player's daily wins to a running **weekly** total in Cloud Save, with a
+  `lastDayCounted` guard so a repeated trigger can't double-count (**idempotent**). This weekly total
+  is the source of truth the leaderboard will display.
+- New `ResetRoster` endpoint (+ dev button) clears accumulated test accounts.
+
+> **Leaderboard submit deferred to M5.** The Cloud Code `LeaderboardScore` model type isn't present
+> in the pinned Apis 0.0.26 package (Unity's own docs assume a newer SDK). Rather than bump the SDK
+> mid-milestone and risk the working Cloud Save calls, the actual `AddLeaderboardPlayerScore` call
+> moves to M5 — the Leaderboards milestone — where we'll pin the right package version. The weekly
+> totals are already tracked, so it's a one-method add then.
+
+### Step 1 — Create the leaderboard (dashboard) — ready for M5
+
+**LiveOps → Leaderboards → Create leaderboard:**
+
+- **ID:** `weekly_wins` (must match the module constant)
+- **Sort order:** Descending (more wins ranks higher)
+- **Update type:** **Keep Latest** (the module will submit the running weekly total)
+- Scheduled resets + tiers: leave off (our code owns the weekly cycle; resets become M6).
+
+Creating it now is fine — it just won't receive scores until the M5 submit is wired.
+
+### Step 2 — Redeploy the module
+
+`Window → Deployment → Deploy`. Should compile now (the leaderboard model dependency was removed).
+
+### Step 3 — Verify weekly tracking
+
+Run the two-player flow again (lock, New test player, lock, Resolve now). Each player's `weekly`
+Cloud Save entry (dashboard → **Player Management → Player → Cloud Save**) should show their running
+win total for the week.
+
+### Step 4 — Automate the daily resolve ✅ (trigger live)
+
+Done via **Products → Gaming Services → Triggers → Create trigger**:
+
+- Trigger type: **Schedule**
+- Schedule: **Recurring**, Frequency **Daily**, Time **20:00 UTC** (event name `daybreak.daily`)
+- Action: **Cloud Code module** → module `Daybreak`, function `ResolveDay`, no parameters
+
+The game now resolves itself every day at 20:00 UTC. (Triggers can't be edited after creation — to
+change the time, delete and recreate.) The manual **Resolve now** button still does the identical
+thing for testing.
 
 ## Phase 5 — Home screen
 

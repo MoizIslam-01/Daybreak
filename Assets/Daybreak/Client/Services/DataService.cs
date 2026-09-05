@@ -32,7 +32,10 @@ namespace Daybreak.Client
             var dto = SquadCodec.ToDto(squad, day, now);
 
 #if DAYBREAK_UGS_CLOUDSAVE
-            var data = new Dictionary<string, object> { { LockedSquadKey, dto } };
+            // Store as a JSON STRING (JsonUtility reads our public-field DTOs). The server writes
+            // and reads these the same way, so the two sides share one format. Reading back with
+            // GetAs<DTO>() would fail — the stored value is a string, not an object.
+            var data = new Dictionary<string, object> { { LockedSquadKey, JsonUtility.ToJson(dto) } };
             await CloudSaveService.Instance.Data.Player.SaveAsync(data);
             Debug.Log("[Daybreak] Locked squad saved for day " + day + ".");
 #else
@@ -48,7 +51,7 @@ namespace Daybreak.Client
             var keys = new HashSet<string> { LockedSquadKey };
             var result = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
             if (result.TryGetValue(LockedSquadKey, out var item))
-                return item.Value.GetAs<SquadDto>();
+                return JsonUtility.FromJson<SquadDto>(item.Value.GetAs<string>());
             return null;
 #else
             await Task.Yield();
@@ -62,7 +65,7 @@ namespace Daybreak.Client
             var keys = new HashSet<string> { DayResultKey };
             var result = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
             if (result.TryGetValue(DayResultKey, out var item))
-                return item.Value.GetAs<DayResultDto>();
+                return JsonUtility.FromJson<DayResultDto>(item.Value.GetAs<string>());
             return null;
 #else
             await Task.Yield();

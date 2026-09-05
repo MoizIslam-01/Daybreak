@@ -56,5 +56,32 @@ namespace Daybreak.Client
             IsSignedIn = false;
             PlayerId = null;
         }
+
+        /// <summary>
+        /// Testing aid only: drop the current anonymous account and create a fresh one, so a single
+        /// device can act as two players. Clearing the session token is what forces a NEW player id
+        /// rather than resuming the cached one. Not used in normal play.
+        /// </summary>
+        public static async Task<string> SwitchToNewAnonymousPlayerAsync()
+        {
+#if DAYBREAK_UGS_CORE && DAYBREAK_UGS_AUTH
+            if (UnityServices.State != ServicesInitializationState.Initialized)
+                await UnityServices.InitializeAsync();
+
+            if (AuthenticationService.Instance.IsSignedIn)
+                AuthenticationService.Instance.SignOut();
+            AuthenticationService.Instance.ClearSessionToken();
+
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            PlayerId = AuthenticationService.Instance.PlayerId;
+            IsSignedIn = true;
+            Debug.Log("[Daybreak] Switched to new test player " + PlayerId);
+            return PlayerId;
+#else
+            await Task.Yield();
+            PlayerId = "local-dev-player-" + System.Guid.NewGuid().ToString().Substring(0, 4);
+            return PlayerId;
+#endif
+        }
     }
 }
