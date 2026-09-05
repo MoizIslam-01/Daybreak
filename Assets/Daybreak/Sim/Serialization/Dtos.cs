@@ -32,6 +32,8 @@ namespace Daybreak.Sim
         public string opponentId;
         public bool won;
         public int seed;
+        public string modifierId;     // the weekly modifier in force (for exact replay)
+        public SquadDto opponentSquad; // snapshot, so the client can regenerate the fight offline
     }
 
     [Serializable]
@@ -41,6 +43,7 @@ namespace Daybreak.Sim
         public int wins;
         public int losses;
         public int remainingHpAcrossWins;
+        public SquadDto mySquad;        // the squad this player fielded that day
         public BattleRecordDto[] battles;
     }
 }

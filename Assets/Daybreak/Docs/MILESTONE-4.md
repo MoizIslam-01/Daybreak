@@ -114,9 +114,27 @@ The game now resolves itself every day at 20:00 UTC. (Triggers can't be edited a
 change the time, delete and recreate.) The manual **Resolve now** button still does the identical
 thing for testing.
 
-## Phase 5 — Home screen
+## Phase 5 — Home screen ✅ (code done — setup below)
 
-- Show yesterday's record ("You went 4–1") and let you tap a battle to watch the replay —
-  regenerated on the client from the stored `(opponent, seed)` through the M2 `ReplayPlayer`.
+- The stored day result now embeds each opponent's squad snapshot and your own squad (the replay
+  format from §8.3: *(squads, modifier, seed)*), so the client can rebuild any battle offline.
+- `HomeScreen` (client): shows "You went W–L" and a Watch button per battle. Watch reconstructs the
+  fight from the stored squads + seed, re-runs the sim locally, and plays it through the M2
+  `ReplayPlayer`. Nothing is streamed — a few bytes become the whole animated battle.
 
-**Done when** two players lock and wake to correct, watchable results.
+### Setup
+
+1. **Redeploy the module** (`Window → Deployment → Deploy`) — results now carry squad snapshots.
+   Existing results from before this deploy won't have squads (Watch stays disabled for those), so
+   run a fresh resolve after deploying.
+2. New scene → **Basic 2D** → save as `Assets/Daybreak/Scenes/Home.unity`.
+3. Empty GameObject `Home` → **Add Component → HomeScreen** (a `ReplayPlayer` is added automatically).
+4. Press Play. Sign-in happens automatically; your last resolve's record appears.
+
+### Test the full loop
+
+In Practice: lock a squad → New test player → lock → **Resolve now**. Then open the Home scene and
+press Play as that player → you'll see "You went 1–0/0–1" and can **Watch** the battle the server
+resolved — regenerated on your device.
+
+**Done when** two players lock and wake to correct, watchable results. ✅

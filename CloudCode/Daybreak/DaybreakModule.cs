@@ -85,13 +85,18 @@ namespace Daybreak.CloudCode
             var roster = await ReadRoster(ctx, api);
 
             var entries = new List<PlayerEntry>();
+            var squadMap = new Dictionary<string, SquadDto>(); // keep DTOs to embed in replays
             foreach (var playerId in roster)
             {
                 var dto = await ReadLockedSquad(ctx, api, playerId);
                 if (dto == null) continue;
                 if (dto.day != day) continue; // only those who locked for today
 
-                try { entries.Add(new PlayerEntry(playerId, SquadCodec.FromDto(dto))); }
+                try
+                {
+                    entries.Add(new PlayerEntry(playerId, SquadCodec.FromDto(dto)));
+                    squadMap[playerId] = dto;
+                }
                 catch (Exception e) { _logger.LogWarning("Skipping {PlayerId}: {Err}", playerId, e.Message); }
             }
 
@@ -107,8 +112,7 @@ namespace Daybreak.CloudCode
             int battles = 0;
             foreach (var pr in resolution.Players)
             {
-                var resultDto = SquadCodec.ToDto(pr);
-                resultDto.day = day;
+                var resultDto = BuildDayResult(pr, day, squadMap);
                 battles += pr.Battles.Count;
 
                 // Cross-player write (authenticated as Cloud Code).
@@ -125,6 +129,41 @@ namespace Daybreak.CloudCode
                 Day = day,
                 PlayersResolved = resolution.Players.Count,
                 BattlesRun = battles / 2 // each battle recorded from both sides
+            };
+        }
+
+        /// <summary>
+        /// Builds the stored day result, embedding each opponent's squad snapshot and the player's
+        /// own squad so the client can regenerate every battle offline from (squads, seed) — the
+        /// replay format from the design (§8.3). Modifier is "none" until M6 rotates modifiers.
+        /// </summary>
+        private static DayResultDto BuildDayResult(PlayerDayResult pr, int day,
+            Dictionary<string, SquadDto> squadMap)
+        {
+            var battles = new BattleRecordDto[pr.Battles.Count];
+            for (int i = 0; i < pr.Battles.Count; i++)
+            {
+                var b = pr.Battles[i];
+                squadMap.TryGetValue(b.OpponentId, out var oppSquad);
+                battles[i] = new BattleRecordDto
+                {
+                    opponentId = b.OpponentId,
+                    won = b.Won,
+                    seed = b.Seed,
+                    modifierId = "none",
+                    opponentSquad = oppSquad
+                };
+            }
+
+            squadMap.TryGetValue(pr.PlayerId, out var mine);
+            return new DayResultDto
+            {
+                day = day,
+                wins = pr.Wins,
+                losses = pr.Losses,
+                remainingHpAcrossWins = pr.RemainingHpAcrossWins,
+                mySquad = mine,
+                battles = battles
             };
         }
 

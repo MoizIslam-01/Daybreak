@@ -102,12 +102,25 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 | **M1** | **The sim** | Same seed → byte-identical event log; battles feel sensible | ✅ Complete |
 | **M2** | **Replay renderer** | You can watch a fight play out and it reads clearly | ✅ Complete |
 | **M3** | **Squad builder + practice** | Full offline loop: build → watch | ✅ Complete |
-| M4 | Server resolve loop | Two players lock squads and wake to correct results — **the game is live** | ⬜ Next |
-| M5 | Social + notifications | Teams, leaderboards, push on resolve, auto-repeat for no-shows | ⬜ |
+| **M4** | **Server resolve loop** | Two players lock squads and wake to correct results — **the game is live** | ✅ Complete |
+| M5 | Social + notifications | Teams, leaderboards, push on resolve, auto-repeat for no-shows | ⬜ Next |
 | M6 | Rewards & liveops | A full weekly cycle runs itself end to end | ⬜ |
 
 Post-launch ideas: active abilities, a second tag per unit, more units and weekly modifiers,
 seasonal cosmetics.
+
+### What M4 delivered — the game is live
+
+- `DailyResolver` in the sim — the nightly round-robin as a pure, tested function; the Cloud Code
+  module only wraps it with IO
+- Shared serialization (`SquadDto`/`DayResultDto`), a `GameCalendar` with a 20:00 UTC resolve
+  boundary, and a Cloud Save wrapper — all unit-tested
+- Server `LockSquad` + `ResolveDay` Cloud Code module: validates and stores locked squads, resolves
+  the round-robin cross-player, writes results, and accumulates weekly win totals idempotently
+- A **Scheduler trigger** firing `ResolveDay` daily at 20:00 UTC — the game resolves itself
+- A home screen that shows your record and rebuilds any battle on-device from the stored
+  *(squads, seed)* to play through the replay renderer — no video, a few hundred bytes
+- Deferred to M5: pushing weekly totals to the leaderboard board (SDK version pin)
 
 ### What M3 delivered
 
