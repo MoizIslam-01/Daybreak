@@ -30,19 +30,36 @@ wraps it.
 
 The Cloud Code module and the client both call this exact function. The server only adds IO.
 
-## Phase 2 — Serialization + client Cloud Save (next)
+## Phase 2 — Serialization + client Cloud Save ✅ (done)
 
-- JSON DTOs for a locked squad and a day result (shared shape, client writes / server reads).
-- `CloudSaveService` (client): write today's locked squad; read yesterday's result.
-- A "Lock for today" action in the client that submits the built squad.
+- `SquadDto` / `DayResultDto` + `SquadCodec` in the sim — the shared wire format. A test proves a
+  squad round-trips and still produces the identical battle.
+- `GameCalendar` — one agreed day/week definition with the 20:00 UTC boundary, pure and tested.
+- `DataService` (client) — save the locked squad, read your own day result (guarded stub until the
+  Cloud Save package is confirmed).
 
-## Phase 3 — Server `ResolveDay` module
+## Phase 3 — Server `ResolveDay` module ✅ (code done — deploy + test below)
 
-- Extend the Cloud Code module: load every active player's locked squad, call
-  `DailyResolver.ResolveDay`, write each player's result back, update the Leaderboard. Idempotent
-  (triggers can fire more than once).
-- Active-player registry: a small game-scoped list each lock appends to, so the resolver knows who
-  to include.
+- `CloudCode/Daybreak/DaybreakModule.cs` gains two endpoints (plus the M0 `SayHello`):
+  - **`LockSquad(squadJson)`** — validates against the shared rules, stores the player's own locked
+    squad, and registers them in a game-wide roster.
+  - **`ResolveDay()`** — reads the roster, cross-player-reads each locked squad, calls the tested
+    `DailyResolver.ResolveDay`, and cross-player-writes each player's result. Only players who
+    locked *for today* are included.
+- Client hooks: `CloudCodeService.LockSquadAsync` / `ResolveDayAsync`, plus a **SERVER (dev)** panel
+  in the Practice builder (Lock to server / Resolve now / My result) to exercise the round trip.
+
+### Deploy & test Phase 3
+
+1. **Enable Cloud Save** on the dashboard: **LiveOps → Cloud Save** (accept the enable prompt).
+2. **Redeploy the module** — `Window → Deployment → Deploy` (it now uses the cross-player APIs).
+3. In the Practice scene, build a valid squad → **Lock to server**. Expect "Locked for day N".
+4. **Resolve now** with only yourself → "1 players, 0 battles" (round-robin needs 2+). That still
+   proves the pipe. For a real battle, have a friend (or a second anonymous sign-in) lock too, then
+   Resolve now → "2 players, 1 battle", and **My result** shows your record.
+
+> Note: `ResolveDay` and `LockSquad` touch cross-player data. For a friend group this is fine, but
+> before any wider release, restrict them with Cloud Code **Access Control** (see the module docs).
 
 ## Phase 4 — Scheduler + Leaderboards (dashboard)
 

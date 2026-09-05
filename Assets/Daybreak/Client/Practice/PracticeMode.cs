@@ -27,12 +27,25 @@ namespace Daybreak.Client
         private string _message = "Pick five units and place them on the grid.";
         private Vector2 _rosterScroll;
 
-        private void Start()
+        private async void Start()
         {
             ConfigureCamera();
             _player = GetComponent<ReplayPlayer>();
             try { _defs = ConfigService.Units; }
             catch (Exception e) { Debug.LogError("[Daybreak] Could not load units: " + e.Message); }
+
+            // Server calls (Lock / Resolve) need an authenticated player. The Practice scene has no
+            // Boot step, so sign in here.
+            try
+            {
+                var id = await AuthService.SignInAnonymouslyAsync();
+                _serverStatus = "Signed in: " + id;
+            }
+            catch (Exception e)
+            {
+                _serverStatus = "Sign-in failed: " + e.Message;
+                Debug.LogWarning("[Daybreak] Sign-in failed: " + e);
+            }
         }
 
         private void OnGUI()
@@ -176,9 +189,59 @@ namespace Daybreak.Client
 
             if (GUILayout.Button("Clear all")) { _draft.ClearAll(); _selectedSlot = -1; _message = "Cleared."; }
 
+            GUILayout.Space(12);
+            GUILayout.Label("SERVER (dev)");
+            GUI.enabled = _draft.IsComplete;
+            if (GUILayout.Button("Lock to server")) LockToServer();
+            GUI.enabled = true;
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Resolve now")) ResolveNow();
+            if (GUILayout.Button("My result")) RefreshResult();
+            GUILayout.EndHorizontal();
+            GUILayout.Label(_serverStatus);
+
             GUILayout.Space(10);
             GUILayout.Label(_message);
             GUILayout.EndArea();
+        }
+
+        // ---- dev round-trip against the server (M4) ----
+
+        private string _serverStatus = "";
+
+        private async void LockToServer()
+        {
+            if (!_draft.TryBuild("you", out var squad, out var err)) { _serverStatus = err; return; }
+            int day = GameCalendar.LockTargetDay(DateTime.UtcNow);
+            _serverStatus = "Locking...";
+            try
+            {
+                var r = await CloudCodeService.LockSquadAsync(SquadCodec.ToDto(squad, day, 0));
+                _serverStatus = r.ok ? ("Locked for day " + r.day) : "Lock returned not-ok (backend installed?)";
+            }
+            catch (Exception e) { _serverStatus = "Lock error: " + e.Message; }
+        }
+
+        private async void ResolveNow()
+        {
+            _serverStatus = "Resolving...";
+            try
+            {
+                var r = await CloudCodeService.ResolveDayAsync();
+                _serverStatus = "Resolved day " + r.day + ": " + r.playersResolved + " players, " + r.battlesRun + " battles";
+            }
+            catch (Exception e) { _serverStatus = "Resolve error: " + e.Message; }
+        }
+
+        private async void RefreshResult()
+        {
+            _serverStatus = "Reading...";
+            try
+            {
+                var res = await DataService.LoadDayResultAsync();
+                _serverStatus = res == null ? "No result stored yet." : ("You went " + res.wins + "-" + res.losses);
+            }
+            catch (Exception e) { _serverStatus = "Read error: " + e.Message; }
         }
 
         private void DrawSynergyPreview()
