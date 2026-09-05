@@ -25,6 +25,7 @@ namespace Daybreak.CloudCode
     {
         private const string LockedSquadKey = "lockedSquad";
         private const string DayResultKey = "dayResult";
+        private const string ProfileKey = "profile";
         private const string RosterCustomId = "daybreak";
         private const string RosterKey = "players";
         private const string WeeklyKey = "weekly";
@@ -85,7 +86,8 @@ namespace Daybreak.CloudCode
             var roster = await ReadRoster(ctx, api);
 
             var entries = new List<PlayerEntry>();
-            var squadMap = new Dictionary<string, SquadDto>(); // keep DTOs to embed in replays
+            var squadMap = new Dictionary<string, SquadDto>();   // to embed squads in replays
+            var profileMap = new Dictionary<string, ProfileDto>(); // to embed names/colors
             foreach (var playerId in roster)
             {
                 var dto = await ReadLockedSquad(ctx, api, playerId);
@@ -96,6 +98,7 @@ namespace Daybreak.CloudCode
                 {
                     entries.Add(new PlayerEntry(playerId, SquadCodec.FromDto(dto)));
                     squadMap[playerId] = dto;
+                    profileMap[playerId] = Json.From<ProfileDto>(await ReadPlayerItem(ctx, api, playerId, ProfileKey));
                 }
                 catch (Exception e) { _logger.LogWarning("Skipping {PlayerId}: {Err}", playerId, e.Message); }
             }
@@ -112,7 +115,7 @@ namespace Daybreak.CloudCode
             int battles = 0;
             foreach (var pr in resolution.Players)
             {
-                var resultDto = BuildDayResult(pr, day, squadMap);
+                var resultDto = BuildDayResult(pr, day, squadMap, profileMap);
                 battles += pr.Battles.Count;
 
                 // Cross-player write (authenticated as Cloud Code).
@@ -138,16 +141,19 @@ namespace Daybreak.CloudCode
         /// replay format from the design (§8.3). Modifier is "none" until M6 rotates modifiers.
         /// </summary>
         private static DayResultDto BuildDayResult(PlayerDayResult pr, int day,
-            Dictionary<string, SquadDto> squadMap)
+            Dictionary<string, SquadDto> squadMap, Dictionary<string, ProfileDto> profileMap)
         {
             var battles = new BattleRecordDto[pr.Battles.Count];
             for (int i = 0; i < pr.Battles.Count; i++)
             {
                 var b = pr.Battles[i];
                 squadMap.TryGetValue(b.OpponentId, out var oppSquad);
+                var oppProfile = ProfileRules.Sanitize(Lookup(profileMap, b.OpponentId));
                 battles[i] = new BattleRecordDto
                 {
                     opponentId = b.OpponentId,
+                    opponentName = oppProfile.displayName,
+                    opponentColor = oppProfile.colorHex,
                     won = b.Won,
                     seed = b.Seed,
                     modifierId = "none",
@@ -156,15 +162,23 @@ namespace Daybreak.CloudCode
             }
 
             squadMap.TryGetValue(pr.PlayerId, out var mine);
+            var myProfile = ProfileRules.Sanitize(Lookup(profileMap, pr.PlayerId));
             return new DayResultDto
             {
                 day = day,
                 wins = pr.Wins,
                 losses = pr.Losses,
                 remainingHpAcrossWins = pr.RemainingHpAcrossWins,
+                myName = myProfile.displayName,
+                myColor = myProfile.colorHex,
                 mySquad = mine,
                 battles = battles
             };
+        }
+
+        private static ProfileDto Lookup(Dictionary<string, ProfileDto> map, string id)
+        {
+            return id != null && map.TryGetValue(id, out var p) ? p : null;
         }
 
         // ---- weekly wins + leaderboard ----

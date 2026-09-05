@@ -82,8 +82,11 @@ namespace Daybreak.Client
             if (_result != null)
             {
                 GUILayout.Space(6);
-                GUILayout.Label("You went " + _result.wins + " - " + _result.losses
-                    + "   (day " + _result.day + ")");
+                string me = string.IsNullOrEmpty(_result.myName) ? "You" : _result.myName;
+                var meStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold };
+                meStyle.normal.textColor = Parse(_result.myColor);
+                GUILayout.Label(me + " went " + _result.wins + " - " + _result.losses
+                    + "   (day " + _result.day + ")", meStyle);
                 GUILayout.Space(6);
                 GUILayout.Label("BATTLES  (tap Watch to replay)");
 
@@ -96,7 +99,11 @@ namespace Daybreak.Client
                         var b = battles[i];
                         GUILayout.BeginHorizontal();
                         string tag = b.won ? "WON " : "LOST";
-                        GUILayout.Label(tag + "  vs " + Short(b.opponentId), GUILayout.Width(360));
+                        string oppName = string.IsNullOrEmpty(b.opponentName) ? Short(b.opponentId) : b.opponentName;
+                        var oppStyle = new GUIStyle(GUI.skin.label);
+                        oppStyle.normal.textColor = Parse(b.opponentColor);
+                        GUILayout.Label(tag + "  vs ", GUILayout.Width(70));
+                        GUILayout.Label(oppName, oppStyle, GUILayout.Width(280));
                         GUI.enabled = b.opponentSquad != null && _result.mySquad != null;
                         if (GUILayout.Button("Watch", GUILayout.Width(90))) Watch(b);
                         GUI.enabled = true;
@@ -135,6 +142,9 @@ namespace Daybreak.Client
 
         private static string Short(string id) =>
             string.IsNullOrEmpty(id) ? "?" : (id.Length <= 8 ? id : id.Substring(0, 8) + "…");
+
+        private static Color Parse(string hex) =>
+            !string.IsNullOrEmpty(hex) && ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
 
         private static void ConfigureCamera()
         {

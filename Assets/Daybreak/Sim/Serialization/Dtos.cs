@@ -16,6 +16,16 @@ namespace Daybreak.Sim
         public int col;
     }
 
+    /// <summary>A player's public identity: what everyone else sees instead of a raw id.</summary>
+    [Serializable]
+    public sealed class ProfileDto
+    {
+        public string displayName;
+        public string colorHex;  // accent color, e.g. "#4A90D9"
+        public string emoji;     // short avatar glyph, e.g. "🐉" (optional)
+        public string teamId;    // set in the teams phase; empty means no team
+    }
+
     [Serializable]
     public sealed class SquadDto
     {
@@ -30,6 +40,8 @@ namespace Daybreak.Sim
     public sealed class BattleRecordDto
     {
         public string opponentId;
+        public string opponentName;   // snapshot of the opponent's display name
+        public string opponentColor;  // snapshot of their accent color
         public bool won;
         public int seed;
         public string modifierId;     // the weekly modifier in force (for exact replay)
@@ -43,6 +55,8 @@ namespace Daybreak.Sim
         public int wins;
         public int losses;
         public int remainingHpAcrossWins;
+        public string myName;           // this player's display name at resolve time
+        public string myColor;
         public SquadDto mySquad;        // the squad this player fielded that day
         public BattleRecordDto[] battles;
     }

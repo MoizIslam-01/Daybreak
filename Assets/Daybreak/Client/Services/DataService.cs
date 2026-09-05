@@ -20,10 +20,12 @@ namespace Daybreak.Client
     {
         public const string LockedSquadKey = "lockedSquad";
         public const string DayResultKey = "dayResult";
+        public const string ProfileKey = "profile";
 
 #if !DAYBREAK_UGS_CLOUDSAVE
-        // In-memory stand-in so local play works without the backend.
+        // In-memory stand-ins so local play works without the backend.
         private static SquadDto _stubSquad;
+        private static ProfileDto _stubProfile;
 #endif
 
         public static async Task SaveLockedSquadAsync(Squad squad, int day)
@@ -56,6 +58,33 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return _stubSquad;
+#endif
+        }
+
+        public static async Task SaveProfileAsync(ProfileDto profile)
+        {
+            var clean = ProfileRules.Sanitize(profile);
+#if DAYBREAK_UGS_CLOUDSAVE
+            var data = new Dictionary<string, object> { { ProfileKey, JsonUtility.ToJson(clean) } };
+            await CloudSaveService.Instance.Data.Player.SaveAsync(data);
+            Debug.Log("[Daybreak] Profile saved: " + clean.displayName);
+#else
+            await Task.Yield();
+            _stubProfile = clean;
+#endif
+        }
+
+        public static async Task<ProfileDto> LoadProfileAsync()
+        {
+#if DAYBREAK_UGS_CLOUDSAVE
+            var keys = new HashSet<string> { ProfileKey };
+            var result = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
+            if (result.TryGetValue(ProfileKey, out var item))
+                return JsonUtility.FromJson<ProfileDto>(item.Value.GetAs<string>());
+            return null;
+#else
+            await Task.Yield();
+            return _stubProfile;
 #endif
         }
 
