@@ -103,11 +103,20 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 | **M2** | **Replay renderer** | You can watch a fight play out and it reads clearly | ✅ Complete |
 | **M3** | **Squad builder + practice** | Full offline loop: build → watch | ✅ Complete |
 | **M4** | **Server resolve loop** | Two players lock squads and wake to correct results — **the game is live** | ✅ Complete |
-| M5 | Social + notifications | Teams, leaderboards, push on resolve, auto-repeat for no-shows | ⬜ Next |
-| M6 | Rewards & liveops | A full weekly cycle runs itself end to end | ⬜ |
+| **M5** | **Social + notifications** | Teams, leaderboards, reminder on resolve, auto-repeat for no-shows | ✅ Complete |
+| M6 | Rewards & liveops | A full weekly cycle runs itself end to end | ⬜ Next |
 
 Post-launch ideas: active abilities, a second tag per unit, more units and weekly modifiers,
 seasonal cosmetics.
+
+### What M5 delivered — a group game
+
+- Player **profiles** (name, accent color, badge), shown in results and standings instead of raw ids
+- **Teams**: create/join, one team per player, membership held server-side
+- Weekly **standings** — individual and team, computed in the sim from everyone's win/HP totals and
+  shown ranked in players' colors (`StandingsCalculator`, unit-tested)
+- **Auto-repeat**: a player who skips a day still fights with their last locked squad
+- **Local daily notification** just after the 20:00 UTC resolve — no Firebase, no push server
 
 ### What M4 delivered — the game is live
 
