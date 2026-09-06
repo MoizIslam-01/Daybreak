@@ -17,6 +17,29 @@
 3. **Leaderboards** — individual + team standings, computed from our own weekly data.
 4. **Notifications + auto-repeat** — local daily reminder; no-shows auto-repeat their last squad.
 
+## Phase 4 — Notifications + auto-repeat ✅ (code done)
+
+- **Auto-repeat:** `ResolveDay` now includes every roster player who has *ever* locked, using their
+  last locked squad even if they didn't lock today — the design pillar that the flakiest friend
+  keeps participating. (One-line change: dropped the "locked for today" filter.)
+- **Local notifications:** `NotificationService` schedules a repeating on-device reminder just after
+  20:00 UTC. No Firebase. Guarded by `DAYBREAK_MOBILE_NOTIFICATIONS`, so it's a no-op until the
+  package is added; `HomeScreen` calls it on open.
+
+### Enabling notifications (Android)
+
+1. Package Manager → install **Mobile Notifications** (`com.unity.mobile.notifications`).
+2. Add its assembly to `Daybreak.Client.asmdef` references (the notifications runtime assembly).
+   The `DAYBREAK_MOBILE_NOTIFICATIONS` define then activates the real code path automatically.
+3. Build to an Android device and open the Home screen once — a daily reminder is scheduled. (On
+   Android 13+ the OS will prompt for notification permission.)
+
+Auto-repeat needs no setup — redeploy the module and it's live. It's a resolver-inclusion change, so
+it's most visible across days: lock once, skip a day, and you'll still appear in that day's results
+with your last squad.
+
+**Done when** the group can play as teams and gets pinged when results drop. ✅
+
 ---
 
 ## Phase 1 — Profiles ✅ (code done — setup below)

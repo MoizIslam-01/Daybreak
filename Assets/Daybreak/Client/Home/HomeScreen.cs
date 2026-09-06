@@ -36,6 +36,7 @@ namespace Daybreak.Client
             try
             {
                 _myId = await AuthService.SignInAnonymouslyAsync();
+                NotificationService.ScheduleDailyResultReminder(); // no-op unless enabled on Android
                 await Refresh();
             }
             catch (Exception e) { _status = "Sign-in failed: " + e.Message; }

@@ -92,7 +92,9 @@ namespace Daybreak.CloudCode
             {
                 var dto = await ReadLockedSquad(ctx, api, playerId);
                 if (dto == null) continue;
-                if (dto.day != day) continue; // only those who locked for today
+                // Auto-repeat: a player who didn't lock today still fights with their LAST locked
+                // squad (design pillar — the flakiest friend keeps participating). So we include
+                // every roster player who has ever locked, regardless of the squad's day.
 
                 try
                 {

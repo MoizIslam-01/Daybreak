@@ -6,7 +6,8 @@
         "Unity.Services.Core",
         "Unity.Services.Authentication",
         "Unity.Services.CloudCode",
-        "Unity.Services.CloudSave"
+        "Unity.Services.CloudSave",
+        "Unity.Notifications.Android"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -35,6 +36,11 @@
             "name": "com.unity.services.cloudsave",
             "expression": "1.0.0",
             "define": "DAYBREAK_UGS_CLOUDSAVE"
+        },
+        {
+            "name": "com.unity.mobile.notifications",
+            "expression": "2.0.0",
+            "define": "DAYBREAK_MOBILE_NOTIFICATIONS"
         }
     ],
     "noEngineReferences": false
