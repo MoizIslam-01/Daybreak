@@ -23,6 +23,7 @@ namespace Daybreak.Client
 
         private string _myId;
         private DayResultDto _result;
+        private WalletDto _wallet;
         private string _status = "Loading...";
         private Vector2 _scroll;
 
@@ -48,6 +49,7 @@ namespace Daybreak.Client
             try
             {
                 _result = await DataService.LoadDayResultAsync();
+                _wallet = await DataService.LoadWalletAsync();
                 _status = _result == null
                     ? "No results yet. Lock a squad in Practice, run a resolve, then come back."
                     : "";
@@ -77,6 +79,12 @@ namespace Daybreak.Client
 
             GUILayout.Label("DAYBREAK — Your day");
             if (GUILayout.Button("Refresh", GUILayout.Width(90))) _ = Refresh();
+
+            // This week's modifier + your Sparks balance.
+            var mod = WeeklyModifierRotation.ForWeek(
+                GameCalendar.WeekNumber(GameCalendar.LockTargetDay(DateTime.UtcNow)));
+            GUILayout.Label("This week: " + ModifierLabel(mod)
+                + "     Sparks: " + (_wallet != null ? _wallet.sparks : 0));
 
             if (!string.IsNullOrEmpty(_status)) GUILayout.Label(_status);
 
@@ -129,7 +137,7 @@ namespace Daybreak.Client
                 var a = meA ? mine : opp;
                 var sideB = meA ? opp : mine;
 
-                var mod = WeeklyModifier.None; // b.modifierId == "none" for now
+                var mod = WeeklyModifierRotation.ById(b.modifierId);
                 var result = BattleSimulator.Simulate(a, sideB, mod, b.seed, _defs);
 
                 _phase = Phase.Watching;
@@ -138,6 +146,18 @@ namespace Daybreak.Client
             catch (Exception e)
             {
                 _status = "Could not rebuild replay: " + e.Message;
+            }
+        }
+
+        private static string ModifierLabel(WeeklyModifier mod)
+        {
+            switch (mod.Id)
+            {
+                case "entrenched": return "Entrenched (back row takes less)";
+                case "glass_cannons": return "Glass Cannons (+ATK, -HP)";
+                case "vanguards_hour": return "Vanguard's Hour (tanks buffed)";
+                case "arcane_surge": return "Arcane Surge (double true dmg)";
+                default: return "No modifier";
             }
         }
 

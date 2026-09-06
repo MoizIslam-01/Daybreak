@@ -26,6 +26,12 @@ namespace Daybreak.Client
         public const string LeaveTeamEndpoint = "LeaveTeam";
         public const string ListTeamsEndpoint = "ListTeams";
         public const string GetStandingsEndpoint = "GetStandings";
+        public const string BuyCosmeticEndpoint = "BuyCosmetic";
+        public const string EquipTitleEndpoint = "EquipTitle";
+        public const string GrantSparksEndpoint = "GrantSparks";
+
+        [Serializable]
+        public class ShopResult { public bool ok; public int sparks; public string error; }
 
         [Serializable]
         public class TeamActionResult { public bool ok; public string teamId; public string error; }
@@ -106,6 +112,42 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return new TeamActionResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<ShopResult> BuyCosmeticAsync(string cosmeticId)
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var args = new Dictionary<string, object> { { "cosmeticId", cosmeticId } };
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<ShopResult>(ModuleName, BuyCosmeticEndpoint, args);
+#else
+            await Task.Yield();
+            return new ShopResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<ShopResult> EquipTitleAsync(string cosmeticId)
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var args = new Dictionary<string, object> { { "cosmeticId", cosmeticId ?? "" } };
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<ShopResult>(ModuleName, EquipTitleEndpoint, args);
+#else
+            await Task.Yield();
+            return new ShopResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<ShopResult> GrantSparksAsync(int amount)
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var args = new Dictionary<string, object> { { "amount", amount } };
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<ShopResult>(ModuleName, GrantSparksEndpoint, args);
+#else
+            await Task.Yield();
+            return new ShopResult { ok = false, error = "no backend" };
 #endif
         }
 

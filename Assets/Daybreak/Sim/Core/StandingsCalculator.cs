@@ -9,6 +9,7 @@ namespace Daybreak.Sim
         public string Name;
         public string ColorHex;
         public string TeamId;
+        public string Title;    // equipped cosmetic title id
         public int Wins;
         public int RemainingHp; // tiebreak
     }
@@ -41,6 +42,7 @@ namespace Daybreak.Sim
                     name = p.Name,
                     colorHex = p.ColorHex,
                     teamId = p.TeamId,
+                    title = p.Title,
                     wins = p.Wins,
                     remainingHp = p.RemainingHp
                 };

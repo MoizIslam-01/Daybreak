@@ -82,7 +82,9 @@ namespace Daybreak.Client
                 GUILayout.Label("#" + r.rank, GUILayout.Width(44));
                 var style = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
                 style.normal.textColor = Parse(r.colorHex);
-                GUILayout.Label(r.name, style, GUILayout.Width(300));
+                string title = TitleName(r.title);
+                string label = string.IsNullOrEmpty(title) ? r.name : (title + " " + r.name);
+                GUILayout.Label(label, style, GUILayout.Width(320));
                 GUILayout.Label(r.wins + " W", GUILayout.Width(60));
                 GUILayout.EndHorizontal();
             }
@@ -103,6 +105,12 @@ namespace Daybreak.Client
                 GUILayout.Label("(" + r.memberCount + ")", GUILayout.Width(50));
                 GUILayout.EndHorizontal();
             }
+        }
+
+        private static string TitleName(string id)
+        {
+            var c = CosmeticCatalog.Get(id);
+            return c != null ? c.name : "";
         }
 
         private static Color Parse(string hex) =>

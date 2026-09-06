@@ -29,7 +29,10 @@ namespace Daybreak.CloudCode
         private const string RosterCustomId = "daybreak";
         private const string RosterKey = "players";
         private const string WeeklyKey = "weekly";
+        private const string WalletKey = "wallet";
         private const string LeaderboardId = "weekly_wins";
+        private const int SparksPerLock = 10;
+        private const int SparksPerWin = 2;
 
         private readonly ILogger<DaybreakModule> _logger;
 
@@ -72,6 +75,7 @@ namespace Daybreak.CloudCode
                 new SetItemBody(LockedSquadKey, squadJson));
 
             await RegisterInRoster(ctx, api, ctx.PlayerId);
+            await AwardLockSparks(ctx, api, ctx.PlayerId, dto.day);
 
             _logger.LogInformation("Player {PlayerId} locked a squad for day {Day}.", ctx.PlayerId, dto.day);
             return new LockResponse { Ok = true, Day = dto.day };
@@ -112,12 +116,13 @@ namespace Daybreak.CloudCode
                 return new ResolveResponse { Day = day, PlayersResolved = entries.Count, BattlesRun = 0 };
             }
 
-            var resolution = DailyResolver.ResolveDay(day, entries, WeeklyModifier.None, UnitConfig.Units);
+            var modifier = WeeklyModifierRotation.ForWeek(GameCalendar.WeekNumber(day));
+            var resolution = DailyResolver.ResolveDay(day, entries, modifier, UnitConfig.Units);
 
             int battles = 0;
             foreach (var pr in resolution.Players)
             {
-                var resultDto = BuildDayResult(pr, day, squadMap, profileMap);
+                var resultDto = BuildDayResult(pr, day, squadMap, profileMap, modifier.Id);
                 battles += pr.Battles.Count;
 
                 // Cross-player write (authenticated as Cloud Code).
@@ -125,6 +130,7 @@ namespace Daybreak.CloudCode
                     new SetItemBody(DayResultKey, Json.To(resultDto)));
 
                 await UpdateWeekly(ctx, api, pr.PlayerId, day, pr.Wins, pr.RemainingHpAcrossWins);
+                await AwardWinSparks(ctx, api, pr.PlayerId, day, pr.Wins);
             }
 
             _logger.LogInformation("ResolveDay {Day}: {Players} players, {Battles} battle-records written.",
@@ -143,7 +149,7 @@ namespace Daybreak.CloudCode
         /// replay format from the design (§8.3). Modifier is "none" until M6 rotates modifiers.
         /// </summary>
         private static DayResultDto BuildDayResult(PlayerDayResult pr, int day,
-            Dictionary<string, SquadDto> squadMap, Dictionary<string, ProfileDto> profileMap)
+            Dictionary<string, SquadDto> squadMap, Dictionary<string, ProfileDto> profileMap, string modifierId)
         {
             var battles = new BattleRecordDto[pr.Battles.Count];
             for (int i = 0; i < pr.Battles.Count; i++)
@@ -158,7 +164,7 @@ namespace Daybreak.CloudCode
                     opponentColor = oppProfile.colorHex,
                     won = b.Won,
                     seed = b.Seed,
-                    modifierId = "none",
+                    modifierId = modifierId,
                     opponentSquad = oppSquad
                 };
             }
@@ -238,6 +244,7 @@ namespace Daybreak.CloudCode
                     Name = profile.displayName,
                     ColorHex = profile.colorHex,
                     TeamId = profile.teamId,
+                    Title = profile.title,
                     Wins = wins,
                     RemainingHp = hp
                 });
@@ -246,6 +253,84 @@ namespace Daybreak.CloudCode
             var teams = (await ReadTeams(ctx, api)).teams;
             var standings = StandingsCalculator.Compute(week, inputs, teams);
             return Json.To(standings);
+        }
+
+        // ---- Sparks currency (M6): reward showing up over winning ----
+
+        private async Task AwardLockSparks(IExecutionContext ctx, IGameApiClient api, string playerId, int day)
+        {
+            var wallet = await ReadWallet(ctx, api, playerId);
+            if (wallet.lastLockDay == day) return; // one lock bonus per day
+            wallet.sparks += SparksPerLock;
+            wallet.lastLockDay = day;
+            await WriteWallet(ctx, api, playerId, wallet);
+        }
+
+        private async Task AwardWinSparks(IExecutionContext ctx, IGameApiClient api, string playerId, int day, int wins)
+        {
+            var wallet = await ReadWallet(ctx, api, playerId);
+            if (wallet.lastWinDay == day) return; // idempotent per day
+            wallet.sparks += SparksPerWin * (wins < 0 ? 0 : wins);
+            wallet.lastWinDay = day;
+            await WriteWallet(ctx, api, playerId, wallet);
+        }
+
+        private async Task<WalletDto> ReadWallet(IExecutionContext ctx, IGameApiClient api, string playerId)
+        {
+            var w = Json.From<WalletDto>(await ReadPlayerItem(ctx, api, playerId, WalletKey));
+            return w ?? new WalletDto { sparks = 0, lastLockDay = -1, lastWinDay = -1 };
+        }
+
+        private async Task WriteWallet(IExecutionContext ctx, IGameApiClient api, string playerId, WalletDto wallet)
+        {
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, playerId,
+                new SetItemBody(WalletKey, Json.To(wallet)));
+        }
+
+        // ---- cosmetic shop (M6) ----
+
+        [CloudCodeFunction("BuyCosmetic")]
+        public async Task<ShopResponse> BuyCosmetic(IExecutionContext ctx, IGameApiClient api, string cosmeticId)
+        {
+            var cosmetic = CosmeticCatalog.Get(cosmeticId);
+            var wallet = await ReadWallet(ctx, api, ctx.PlayerId);
+
+            if (!CosmeticRules.CanBuy(wallet, cosmetic, out var reason))
+                return new ShopResponse { ok = false, sparks = wallet.sparks, error = reason };
+
+            wallet.sparks -= cosmetic.cost;
+            var owned = new List<string>(wallet.owned ?? new string[0]) { cosmetic.id };
+            wallet.owned = owned.ToArray();
+            await WriteWallet(ctx, api, ctx.PlayerId, wallet);
+
+            return new ShopResponse { ok = true, sparks = wallet.sparks };
+        }
+
+        /// <summary>Equip (or clear, with "") a title the player owns. Purely cosmetic.</summary>
+        [CloudCodeFunction("EquipTitle")]
+        public async Task<ShopResponse> EquipTitle(IExecutionContext ctx, IGameApiClient api, string cosmeticId)
+        {
+            var wallet = await ReadWallet(ctx, api, ctx.PlayerId);
+            if (!string.IsNullOrEmpty(cosmeticId) && !CosmeticRules.Owns(wallet, cosmeticId))
+                return new ShopResponse { ok = false, sparks = wallet.sparks, error = "You don't own that." };
+
+            var raw = await ReadPlayerItem(ctx, api, ctx.PlayerId, ProfileKey);
+            var profile = ProfileRules.Sanitize(Json.From<ProfileDto>(raw));
+            profile.title = cosmeticId ?? "";
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.AccessToken, ctx.ProjectId, ctx.PlayerId,
+                new SetItemBody(ProfileKey, Json.To(profile)));
+
+            return new ShopResponse { ok = true, sparks = wallet.sparks };
+        }
+
+        /// <summary>Dev/testing: grant Sparks so the shop can be exercised without waiting days.</summary>
+        [CloudCodeFunction("GrantSparks")]
+        public async Task<ShopResponse> GrantSparks(IExecutionContext ctx, IGameApiClient api, int amount)
+        {
+            var wallet = await ReadWallet(ctx, api, ctx.PlayerId);
+            wallet.sparks += (amount < 0 ? 0 : amount);
+            await WriteWallet(ctx, api, ctx.PlayerId, wallet);
+            return new ShopResponse { ok = true, sparks = wallet.sparks };
         }
 
         // ---- teams (M5) ----
@@ -459,6 +544,13 @@ namespace Daybreak.CloudCode
     {
         public bool ok { get; set; }
         public string teamId { get; set; }
+        public string error { get; set; }
+    }
+
+    public class ShopResponse
+    {
+        public bool ok { get; set; }
+        public int sparks { get; set; }
         public string error { get; set; }
     }
 }

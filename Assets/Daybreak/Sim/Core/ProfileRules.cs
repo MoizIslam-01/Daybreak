@@ -71,7 +71,8 @@ namespace Daybreak.Sim
                 displayName = SanitizeName(profile.displayName),
                 colorHex = SanitizeColor(profile.colorHex),
                 emoji = string.IsNullOrEmpty(profile.emoji) ? "" : profile.emoji,
-                teamId = profile.teamId ?? ""
+                teamId = profile.teamId ?? "",
+                title = profile.title ?? ""
             };
         }
     }

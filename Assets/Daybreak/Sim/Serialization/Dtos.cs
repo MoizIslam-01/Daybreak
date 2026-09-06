@@ -24,6 +24,23 @@ namespace Daybreak.Sim
         public string colorHex;  // accent color, e.g. "#4A90D9"
         public string emoji;     // short avatar glyph, e.g. "🐉" (optional)
         public string teamId;    // empty means no team
+        public string title;     // equipped title cosmetic id (M6 shop), empty means none
+    }
+
+    /// <summary>A purchasable cosmetic. Purely visual — no power, ever.</summary>
+    [Serializable]
+    public sealed class CosmeticDto
+    {
+        public string id;
+        public string name;   // display flair, e.g. "Tactician"
+        public string kind;   // "title" for now
+        public int cost;      // in Sparks
+    }
+
+    [Serializable]
+    public sealed class CosmeticListDto
+    {
+        public CosmeticDto[] items;
     }
 
     /// <summary>A team: a named group whose members' wins roll up to a team score.</summary>
@@ -51,6 +68,7 @@ namespace Daybreak.Sim
         public string name;
         public string colorHex;
         public string teamId;
+        public string title;
         public int wins;
         public int remainingHp;
     }
@@ -72,6 +90,16 @@ namespace Daybreak.Sim
         public int week;
         public StandingDto[] players;
         public TeamStandingDto[] teams;
+    }
+
+    /// <summary>A player's cosmetic currency and the guards that keep awards idempotent.</summary>
+    [Serializable]
+    public sealed class WalletDto
+    {
+        public int sparks;
+        public int lastLockDay = -1; // last day a lock bonus was granted
+        public int lastWinDay = -1;  // last day win bonuses were granted
+        public string[] owned;       // owned cosmetic ids (M6 shop)
     }
 
     [Serializable]

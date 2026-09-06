@@ -88,6 +88,22 @@ namespace Daybreak.Client
 #endif
         }
 
+        public const string WalletKey = "wallet";
+
+        public static async Task<WalletDto> LoadWalletAsync()
+        {
+#if DAYBREAK_UGS_CLOUDSAVE
+            var keys = new HashSet<string> { WalletKey };
+            var result = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
+            if (result.TryGetValue(WalletKey, out var item))
+                return JsonUtility.FromJson<WalletDto>(item.Value.GetAs<string>());
+            return null;
+#else
+            await Task.Yield();
+            return null;
+#endif
+        }
+
         public static async Task<DayResultDto> LoadDayResultAsync()
         {
 #if DAYBREAK_UGS_CLOUDSAVE
