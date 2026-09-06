@@ -25,6 +25,7 @@ namespace Daybreak.Client
         public const string JoinTeamEndpoint = "JoinTeam";
         public const string LeaveTeamEndpoint = "LeaveTeam";
         public const string ListTeamsEndpoint = "ListTeams";
+        public const string GetStandingsEndpoint = "GetStandings";
 
         [Serializable]
         public class TeamActionResult { public bool ok; public string teamId; public string error; }
@@ -105,6 +106,19 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return new TeamActionResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<StandingsDto> GetStandingsAsync()
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var json = await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<string>(ModuleName, GetStandingsEndpoint, new Dictionary<string, object>());
+            var s = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<StandingsDto>(json);
+            return s ?? new StandingsDto { players = new StandingDto[0], teams = new TeamStandingDto[0] };
+#else
+            await Task.Yield();
+            return new StandingsDto { players = new StandingDto[0], teams = new TeamStandingDto[0] };
 #endif
         }
 

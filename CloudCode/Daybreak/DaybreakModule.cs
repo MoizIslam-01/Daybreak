@@ -122,7 +122,7 @@ namespace Daybreak.CloudCode
                 await api.CloudSaveData.SetItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, pr.PlayerId,
                     new SetItemBody(DayResultKey, Json.To(resultDto)));
 
-                await UpdateWeekly(ctx, api, pr.PlayerId, day, pr.Wins);
+                await UpdateWeekly(ctx, api, pr.PlayerId, day, pr.Wins, pr.RemainingHpAcrossWins);
             }
 
             _logger.LogInformation("ResolveDay {Day}: {Players} players, {Battles} battle-records written.",
@@ -192,22 +192,58 @@ namespace Daybreak.CloudCode
         /// dashboard and ready for it.
         /// </summary>
         private async Task UpdateWeekly(IExecutionContext ctx, IGameApiClient api,
-            string playerId, int day, int dayWins)
+            string playerId, int day, int dayWins, int dayRemainingHp)
         {
             int week = GameCalendar.WeekNumber(day);
 
             var raw = await ReadPlayerItem(ctx, api, playerId, WeeklyKey);
             var record = Json.From<WeeklyRecord>(raw);
             if (record == null || record.week != week)
-                record = new WeeklyRecord { week = week, wins = 0, lastDayCounted = -1 };
+                record = new WeeklyRecord { week = week, wins = 0, remainingHp = 0, lastDayCounted = -1 };
 
-            // Idempotent: only add a given day's wins once, even if the resolve fires again.
+            // Idempotent: only add a given day's totals once, even if the resolve fires again.
             if (record.lastDayCounted == day) return;
 
             record.wins += dayWins;
+            record.remainingHp += dayRemainingHp;
             record.lastDayCounted = day;
             await api.CloudSaveData.SetItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, playerId,
                 new SetItemBody(WeeklyKey, Json.To(record)));
+        }
+
+        /// <summary>
+        /// Returns the current week's individual + team standings, computed from each player's
+        /// weekly Cloud Save record. A JSON string (field-based DTOs don't survive property-only
+        /// return serialization); the client parses it with JsonUtility.
+        /// </summary>
+        [CloudCodeFunction("GetStandings")]
+        public async Task<string> GetStandings(IExecutionContext ctx, IGameApiClient api)
+        {
+            int week = GameCalendar.WeekNumber(GameCalendar.ResolveDayFor(DateTime.UtcNow));
+            var roster = await ReadRoster(ctx, api);
+
+            var inputs = new List<PlayerStandingInput>();
+            foreach (var playerId in roster)
+            {
+                var weekly = Json.From<WeeklyRecord>(await ReadPlayerItem(ctx, api, playerId, WeeklyKey));
+                int wins = (weekly != null && weekly.week == week) ? weekly.wins : 0;
+                int hp = (weekly != null && weekly.week == week) ? weekly.remainingHp : 0;
+
+                var profile = ProfileRules.Sanitize(Json.From<ProfileDto>(await ReadPlayerItem(ctx, api, playerId, ProfileKey)));
+                inputs.Add(new PlayerStandingInput
+                {
+                    PlayerId = playerId,
+                    Name = profile.displayName,
+                    ColorHex = profile.colorHex,
+                    TeamId = profile.teamId,
+                    Wins = wins,
+                    RemainingHp = hp
+                });
+            }
+
+            var teams = (await ReadTeams(ctx, api)).teams;
+            var standings = StandingsCalculator.Compute(week, inputs, teams);
+            return Json.To(standings);
         }
 
         // ---- teams (M5) ----
@@ -393,6 +429,7 @@ namespace Daybreak.CloudCode
     {
         public int week;
         public int wins;
+        public int remainingHp;         // summed across wins this week (leaderboard tiebreak)
         public int lastDayCounted = -1; // guards against double-counting on repeated resolves
     }
 

@@ -44,6 +44,37 @@ namespace Daybreak.Sim
     }
 
     [Serializable]
+    public sealed class StandingDto
+    {
+        public int rank;
+        public string playerId;
+        public string name;
+        public string colorHex;
+        public string teamId;
+        public int wins;
+        public int remainingHp;
+    }
+
+    [Serializable]
+    public sealed class TeamStandingDto
+    {
+        public int rank;
+        public string teamId;
+        public string name;
+        public string colorHex;
+        public int totalWins;
+        public int memberCount;
+    }
+
+    [Serializable]
+    public sealed class StandingsDto
+    {
+        public int week;
+        public StandingDto[] players;
+        public TeamStandingDto[] teams;
+    }
+
+    [Serializable]
     public sealed class SquadDto
     {
         public string ownerId;

@@ -14,8 +14,7 @@
 
 1. **Profiles** ✅ — set your name/color/badge; names shown in results.
 2. **Teams** — create/join a team; team score = sum of members' wins; team leaderboard.
-3. **Leaderboards wired** — individual + team boards actually populated (pins the Leaderboards SDK
-   version that M4 deferred).
+3. **Leaderboards** — individual + team standings, computed from our own weekly data.
 4. **Notifications + auto-repeat** — local daily reminder; no-shows auto-repeat their last squad.
 
 ---
@@ -60,3 +59,25 @@
 > `ListTeams` returns a JSON string (parsed client-side) because the field-based DTOs don't survive
 > the Cloud Code framework's property-only return serialization — same reason the Cloud Save values
 > are JSON strings.
+
+## Phase 3 — Leaderboards ✅ (code done — setup below)
+
+Rather than fight the UGS Leaderboards SDK type mismatch from M4, standings are **computed from our
+own data**: each player's weekly win/HP totals (already tracked in Cloud Save) plus profiles and
+team membership. For a friend group this is simpler and gives full control over names, colors, and
+the team roll-up. (The `weekly_wins` service board stays unused; we can revisit at scale.)
+
+- `StandingsCalculator` in the sim — pure individual + team ranking (wins desc, HP tiebreak, name),
+  unit-tested.
+- Server `GetStandings` — gathers everyone's weekly record + profile + teams, runs the calculator,
+  returns JSON. Weekly records now also track remaining HP for the tiebreak.
+- `LeaderboardScreen` (client): Individual / Teams tabs, ranked, in players' colors.
+
+### Setup
+
+1. Recompile; run tests (standings add 4 → ~82 green).
+2. **Redeploy the module** (adds `GetStandings`, weekly HP tracking).
+3. New scene → **Basic 2D** → `Assets/Daybreak/Scenes/Leaderboard.unity` → empty GameObject → **Add
+   Component → LeaderboardScreen**. Press Play.
+4. You'll see this week's individual standings (and Teams tab) from players who've resolved battles.
+   For fuller data, run a couple of two-player resolves and set profiles/teams first.
