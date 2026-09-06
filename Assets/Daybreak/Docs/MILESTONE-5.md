@@ -38,3 +38,25 @@
    New test player, set their profile, lock; **Resolve now**; open **Home** → names appear.
 
 > Profiles are set in their own scene for now; the polished app will fold this into onboarding.
+
+## Phase 2 — Teams ✅ (code done — setup below)
+
+- `TeamDto` + `TeamRules` in the sim (name sanitize, URL-safe slug id), unit-tested.
+- Server endpoints: `CreateTeam`, `JoinTeam`, `LeaveTeam`, `ListTeams`. Teams live in game data;
+  a player belongs to one team at a time, and their team id mirrors into their profile.
+- `TeamScreen` (client): shows your team, create a team (name + banner color), and a joinable list.
+
+### Setup
+
+1. Recompile; run tests (team rules add 3 → ~78 green).
+2. **Redeploy the module** (`Window → Deployment → Deploy`) — adds the team endpoints.
+3. New scene → **Basic 2D** → `Assets/Daybreak/Scenes/Teams.unity` → empty GameObject → **Add
+   Component → TeamScreen**. Press Play.
+4. Create a team (name + color). Then **New test player** isn't here — to test joining, use a second
+   account: the Practice scene's "New test player" button switches accounts, then come back to the
+   Teams scene (same resumed account) and Join. Or just create one team and confirm "Your team"
+   updates and the member count shows 1.
+
+> `ListTeams` returns a JSON string (parsed client-side) because the field-based DTOs don't survive
+> the Cloud Code framework's property-only return serialization — same reason the Cloud Save values
+> are JSON strings.

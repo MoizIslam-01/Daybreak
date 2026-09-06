@@ -21,6 +21,13 @@ namespace Daybreak.Client
         public const string LockSquadEndpoint = "LockSquad";
         public const string ResolveDayEndpoint = "ResolveDay";
         public const string ResetRosterEndpoint = "ResetRoster";
+        public const string CreateTeamEndpoint = "CreateTeam";
+        public const string JoinTeamEndpoint = "JoinTeam";
+        public const string LeaveTeamEndpoint = "LeaveTeam";
+        public const string ListTeamsEndpoint = "ListTeams";
+
+        [Serializable]
+        public class TeamActionResult { public bool ok; public string teamId; public string error; }
 
         [Serializable]
         public class LockResult { public bool ok; public int day; }
@@ -63,6 +70,55 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return "stub";
+#endif
+        }
+
+        public static async Task<TeamActionResult> CreateTeamAsync(string name, string colorHex)
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var args = new Dictionary<string, object> { { "name", name }, { "colorHex", colorHex } };
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<TeamActionResult>(ModuleName, CreateTeamEndpoint, args);
+#else
+            await Task.Yield();
+            return new TeamActionResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<TeamActionResult> JoinTeamAsync(string teamId)
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var args = new Dictionary<string, object> { { "teamId", teamId } };
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<TeamActionResult>(ModuleName, JoinTeamEndpoint, args);
+#else
+            await Task.Yield();
+            return new TeamActionResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<TeamActionResult> LeaveTeamAsync()
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<TeamActionResult>(ModuleName, LeaveTeamEndpoint, new Dictionary<string, object>());
+#else
+            await Task.Yield();
+            return new TeamActionResult { ok = false, error = "no backend" };
+#endif
+        }
+
+        public static async Task<TeamListDto> ListTeamsAsync()
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            // Server returns a JSON string; parse with JsonUtility (matches the field-based DTOs).
+            var json = await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<string>(ModuleName, ListTeamsEndpoint, new Dictionary<string, object>());
+            var list = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<TeamListDto>(json);
+            return list ?? new TeamListDto { teams = new TeamDto[0] };
+#else
+            await Task.Yield();
+            return new TeamListDto { teams = new TeamDto[0] };
 #endif
         }
 

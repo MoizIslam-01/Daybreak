@@ -210,6 +210,125 @@ namespace Daybreak.CloudCode
                 new SetItemBody(WeeklyKey, Json.To(record)));
         }
 
+        // ---- teams (M5) ----
+
+        private const string TeamsKey = "teams";
+
+        [CloudCodeFunction("CreateTeam")]
+        public async Task<TeamActionResponse> CreateTeam(IExecutionContext ctx, IGameApiClient api,
+            string name, string colorHex)
+        {
+            var list = await ReadTeams(ctx, api);
+            var teams = new List<TeamDto>(list.teams ?? new TeamDto[0]);
+
+            string baseId = TeamRules.Slug(name);
+            string id = baseId;
+            for (int n = 2; TeamById(teams, id) != null; n++) id = baseId + "-" + n;
+
+            // A player belongs to one team — pull them out of any existing team first.
+            RemoveMemberEverywhere(teams, ctx.PlayerId);
+            teams.Add(new TeamDto
+            {
+                id = id,
+                name = TeamRules.SanitizeName(name),
+                colorHex = ProfileRules.SanitizeColor(colorHex),
+                memberIds = new[] { ctx.PlayerId }
+            });
+
+            await WriteTeams(ctx, api, teams);
+            await SetOwnTeamId(ctx, api, id);
+            return new TeamActionResponse { ok = true, teamId = id };
+        }
+
+        [CloudCodeFunction("JoinTeam")]
+        public async Task<TeamActionResponse> JoinTeam(IExecutionContext ctx, IGameApiClient api, string teamId)
+        {
+            var list = await ReadTeams(ctx, api);
+            var teams = new List<TeamDto>(list.teams ?? new TeamDto[0]);
+
+            var team = TeamById(teams, teamId);
+            if (team == null) return new TeamActionResponse { ok = false, teamId = teamId, error = "No such team." };
+
+            RemoveMemberEverywhere(teams, ctx.PlayerId);
+            var members = new List<string>(team.memberIds ?? new string[0]);
+            if (!members.Contains(ctx.PlayerId)) members.Add(ctx.PlayerId);
+            team.memberIds = members.ToArray();
+
+            await WriteTeams(ctx, api, teams);
+            await SetOwnTeamId(ctx, api, teamId);
+            return new TeamActionResponse { ok = true, teamId = teamId };
+        }
+
+        [CloudCodeFunction("LeaveTeam")]
+        public async Task<TeamActionResponse> LeaveTeam(IExecutionContext ctx, IGameApiClient api)
+        {
+            var list = await ReadTeams(ctx, api);
+            var teams = new List<TeamDto>(list.teams ?? new TeamDto[0]);
+            RemoveMemberEverywhere(teams, ctx.PlayerId);
+            await WriteTeams(ctx, api, teams);
+            await SetOwnTeamId(ctx, api, "");
+            return new TeamActionResponse { ok = true, teamId = "" };
+        }
+
+        // Returns a JSON string (not the DTO) because the field-based TeamListDto doesn't survive
+        // the framework's property-based return serialization; the client parses it with JsonUtility.
+        [CloudCodeFunction("ListTeams")]
+        public async Task<string> ListTeams(IExecutionContext ctx, IGameApiClient api)
+        {
+            return Json.To(await ReadTeams(ctx, api));
+        }
+
+        private static TeamDto TeamById(List<TeamDto> teams, string id)
+        {
+            foreach (var t in teams) if (t.id == id) return t;
+            return null;
+        }
+
+        private static void RemoveMemberEverywhere(List<TeamDto> teams, string playerId)
+        {
+            foreach (var t in teams)
+            {
+                if (t.memberIds == null) continue;
+                var kept = new List<string>();
+                foreach (var m in t.memberIds) if (m != playerId) kept.Add(m);
+                t.memberIds = kept.ToArray();
+            }
+            teams.RemoveAll(t => t.memberIds == null || t.memberIds.Length == 0);
+        }
+
+        private async Task<TeamListDto> ReadTeams(IExecutionContext ctx, IGameApiClient api)
+        {
+            try
+            {
+                var res = await api.CloudSaveData.GetCustomItemsAsync(ctx, ctx.ServiceToken, ctx.ProjectId,
+                    RosterCustomId, new List<string> { TeamsKey });
+                var raw = res.Data.Results.FirstOrDefault(r => r.Key == TeamsKey)?.Value?.ToString();
+                return Json.From<TeamListDto>(raw) ?? new TeamListDto { teams = new TeamDto[0] };
+            }
+            catch (ApiException e)
+            {
+                _logger.LogWarning("Teams read failed (treating as empty): {Err}", e.Message);
+                return new TeamListDto { teams = new TeamDto[0] };
+            }
+        }
+
+        private async Task WriteTeams(IExecutionContext ctx, IGameApiClient api, List<TeamDto> teams)
+        {
+            var dto = new TeamListDto { teams = teams.ToArray() };
+            await api.CloudSaveData.SetCustomItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, RosterCustomId,
+                new SetItemBody(TeamsKey, Json.To(dto)));
+        }
+
+        private async Task SetOwnTeamId(IExecutionContext ctx, IGameApiClient api, string teamId)
+        {
+            // Read the caller's own profile (as the player), set teamId, write it back.
+            var raw = await ReadPlayerItem(ctx, api, ctx.PlayerId, ProfileKey);
+            var profile = ProfileRules.Sanitize(Json.From<ProfileDto>(raw));
+            profile.teamId = teamId;
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.AccessToken, ctx.ProjectId, ctx.PlayerId,
+                new SetItemBody(ProfileKey, Json.To(profile)));
+        }
+
         /// <summary>Testing/admin: wipe the active-player roster (clears accumulated test accounts).</summary>
         [CloudCodeFunction("ResetRoster")]
         public async Task<string> ResetRoster(IExecutionContext ctx, IGameApiClient api)
@@ -295,5 +414,12 @@ namespace Daybreak.CloudCode
         public int Day { get; set; }
         public int PlayersResolved { get; set; }
         public int BattlesRun { get; set; }
+    }
+
+    public class TeamActionResponse
+    {
+        public bool ok { get; set; }
+        public string teamId { get; set; }
+        public string error { get; set; }
     }
 }

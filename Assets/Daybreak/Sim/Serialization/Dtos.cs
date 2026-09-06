@@ -23,7 +23,24 @@ namespace Daybreak.Sim
         public string displayName;
         public string colorHex;  // accent color, e.g. "#4A90D9"
         public string emoji;     // short avatar glyph, e.g. "🐉" (optional)
-        public string teamId;    // set in the teams phase; empty means no team
+        public string teamId;    // empty means no team
+    }
+
+    /// <summary>A team: a named group whose members' wins roll up to a team score.</summary>
+    [Serializable]
+    public sealed class TeamDto
+    {
+        public string id;
+        public string name;
+        public string colorHex;  // banner color
+        public string[] memberIds;
+    }
+
+    /// <summary>Wrapper so a list of teams round-trips through Unity's JsonUtility (no top-level arrays).</summary>
+    [Serializable]
+    public sealed class TeamListDto
+    {
+        public TeamDto[] teams;
     }
 
     [Serializable]
