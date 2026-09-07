@@ -433,6 +433,66 @@ namespace Daybreak.CloudCode
             return new ShopResponse { ok = true, sparks = wallet.sparks };
         }
 
+        // ---- profile save with unique-name check (basic validation) ----
+
+        private const string NamesKey = "names";
+
+        /// <summary>
+        /// Saves the caller's profile with server-side validation: sanitizes the fields and rejects
+        /// a display name already taken by a different player. Preserves teamId/title (managed by the
+        /// team/shop endpoints) rather than overwriting them.
+        /// </summary>
+        [CloudCodeFunction("SaveProfile")]
+        public async Task<ProfileResponse> SaveProfile(IExecutionContext ctx, IGameApiClient api, string profileJson)
+        {
+            var incoming = ProfileRules.Sanitize(Json.From<ProfileDto>(profileJson));
+            string wanted = incoming.displayName.ToLowerInvariant();
+
+            var names = await ReadNames(ctx, api);
+            foreach (var e in names.entries ?? new NameEntry[0])
+                if (e.name == wanted && e.playerId != ctx.PlayerId)
+                    return new ProfileResponse { ok = false, error = "That name is taken — pick another." };
+
+            // Merge onto the existing profile so team + title survive.
+            var current = ProfileRules.Sanitize(Json.From<ProfileDto>(await ReadPlayerItem(ctx, api, ctx.PlayerId, ProfileKey)));
+            current.displayName = incoming.displayName;
+            current.colorHex = incoming.colorHex;
+            current.emoji = incoming.emoji;
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.AccessToken, ctx.ProjectId, ctx.PlayerId,
+                new SetItemBody(ProfileKey, Json.To(current)));
+
+            // Reserve the name (drop this player's old entries first).
+            var list = new List<NameEntry>();
+            foreach (var e in names.entries ?? new NameEntry[0])
+                if (e.playerId != ctx.PlayerId) list.Add(e);
+            list.Add(new NameEntry { name = wanted, playerId = ctx.PlayerId });
+            await WriteNames(ctx, api, list);
+
+            return new ProfileResponse { ok = true };
+        }
+
+        private async Task<NameList> ReadNames(IExecutionContext ctx, IGameApiClient api)
+        {
+            try
+            {
+                var res = await api.CloudSaveData.GetCustomItemsAsync(ctx, ctx.ServiceToken, ctx.ProjectId,
+                    RosterCustomId, new List<string> { NamesKey });
+                var raw = res.Data.Results.FirstOrDefault(r => r.Key == NamesKey)?.Value?.ToString();
+                return Json.From<NameList>(raw) ?? new NameList { entries = new NameEntry[0] };
+            }
+            catch (ApiException e)
+            {
+                _logger.LogWarning("Names read failed (treating as empty): {Err}", e.Message);
+                return new NameList { entries = new NameEntry[0] };
+            }
+        }
+
+        private async Task WriteNames(IExecutionContext ctx, IGameApiClient api, List<NameEntry> entries)
+        {
+            await api.CloudSaveData.SetCustomItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, RosterCustomId,
+                new SetItemBody(NamesKey, Json.To(new NameList { entries = entries.ToArray() })));
+        }
+
         // ---- teams (M5) ----
 
         private const string TeamsKey = "teams";
@@ -552,6 +612,30 @@ namespace Daybreak.CloudCode
                 new SetItemBody(ProfileKey, Json.To(profile)));
         }
 
+        /// <summary>
+        /// Dev/admin: full reset for a clean launch. Clears the shared registries (roster, teams,
+        /// champions, name reservations) and the caller's own player data (profile, wallet). Other
+        /// dev accounts' leftover data is orphaned harmlessly — they're no longer in the roster or
+        /// name registry, and new players get fresh anonymous accounts.
+        /// </summary>
+        [CloudCodeFunction("WipeAll")]
+        public async Task<string> WipeAll(IExecutionContext ctx, IGameApiClient api)
+        {
+            await api.CloudSaveData.SetCustomItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, RosterCustomId,
+                new SetItemBody(RosterKey, "[]"));
+            await WriteTeams(ctx, api, new List<TeamDto>());
+            await WriteChampions(ctx, api, new List<ChampionDto>());
+            await WriteNames(ctx, api, new List<NameEntry>());
+
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.AccessToken, ctx.ProjectId, ctx.PlayerId,
+                new SetItemBody(ProfileKey, Json.To(new ProfileDto { displayName = "" })));
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.AccessToken, ctx.ProjectId, ctx.PlayerId,
+                new SetItemBody(WalletKey, Json.To(new WalletDto())));
+
+            _logger.LogInformation("WipeAll by {PlayerId}: registries + own player data cleared.", ctx.PlayerId);
+            return "Wiped registries and your player data. Restart the app.";
+        }
+
         /// <summary>Testing/admin: wipe the active-player roster (clears accumulated test accounts).</summary>
         [CloudCodeFunction("ResetRoster")]
         public async Task<string> ResetRoster(IExecutionContext ctx, IGameApiClient api)
@@ -652,5 +736,23 @@ namespace Daybreak.CloudCode
         public bool ok { get; set; }
         public int sparks { get; set; }
         public string error { get; set; }
+    }
+
+    public class ProfileResponse
+    {
+        public bool ok { get; set; }
+        public string error { get; set; }
+    }
+
+    // Name registry (game data): reserves display names so two players can't share one.
+    public class NameEntry
+    {
+        public string name;     // lowercased
+        public string playerId;
+    }
+
+    public class NameList
+    {
+        public NameEntry[] entries;
     }
 }

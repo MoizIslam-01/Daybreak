@@ -48,10 +48,34 @@ Reusable toolkit: `UITheme`, `UIBuilder` (canvas, panels, TMP labels/buttons, sc
 The old one-per-screen test scenes (Practice, Home, Teams, Leaderboard, Shop, Profile, Replay) are
 now redundant for players — keep them as dev harnesses or delete later.
 
-## Phase C — Android build + hardening (next)
-- Player settings: package name, icon, **portrait** orientation, min SDK.
-- Notification permission prompt (Android 13+) wired to `NotificationService`.
-- Guard/remove dev-only affordances for release: Shop's **Grant Sparks**, the `GrantSparks` and
-  `ResetRoster` Cloud Code endpoints, the `New test player` path, and the legacy test scenes.
-- Access Control on cross-player Cloud Code endpoints.
-- Build an APK and install on a device.
+## Phase C — Android build + hardening
+
+### Hardening ✅ (code done)
+- Dev-only UI is compiled out of release builds via `#if UNITY_EDITOR || DEVELOPMENT_BUILD`:
+  Shop's **Grant Sparks**, and the Me panel's **Reset onboarding** + **Wipe all data**. They show in
+  the editor and Development Builds, and vanish from a normal release APK.
+- **Unique display names** enforced server-side (`SaveProfile` + name registry).
+- Notification runtime permission is now requested (Android 13+).
+- Still owed (dashboard): **Access Control** on cross-player endpoints (`WipeAll`, `GrantSparks`,
+  `ResetRoster`, `ResolveDay`) so only you/the scheduler can call them.
+
+### Clean-slate reset before launching with friends
+Run once from the editor (or a Development Build): **Me → WIPE ALL DATA (dev)**. Clears the shared
+registries (roster, teams, champions, name reservations) and your own player data. New friends get
+fresh anonymous accounts, so the group starts clean.
+
+### Android build steps (your editor work)
+1. `File → Build Profiles → Android → Switch Platform` (installs the Android module if needed).
+2. **Player Settings → Player:**
+   - **Product Name** Daybreak; set an **icon**.
+   - **Other Settings → Package Name:** `com.<you>.daybreak`.
+   - **Resolution and Presentation → Default Orientation: Portrait**.
+   - **Other Settings → Minimum API Level:** Android 8 (API 26) or higher.
+   - **Scripting Backend: IL2CPP**, **Target Architectures: ARM64**.
+3. **Build Profiles**: leave **Development Build unticked** for the real friend build (dev buttons
+   disappear); tick it for a test build that keeps them.
+4. Ensure **Main** is the only scene in the Scene List (index 0).
+5. **Build** the APK (default debug signing is fine for sideloading to friends).
+6. Redeploy the Cloud Code module first if you haven't (it has new `SaveProfile` / `WipeAll`).
+
+**Done when** you can install the APK, onboard, lock a squad, and see results the next day.

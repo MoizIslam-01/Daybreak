@@ -57,6 +57,14 @@ namespace Daybreak.Client.UI
 
             _status = UIBuilder.Label(list, "", UITheme.SmallSize, UITheme.TextDim);
             UIBuilder.Sizing(_status.gameObject, minHeight: 50, preferredHeight: 50);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            var reset = UIBuilder.Button(list, "Reset onboarding (dev)", ResetOnboarding, UITheme.SurfaceAlt, UITheme.SmallSize);
+            UIBuilder.Sizing(reset.gameObject, minHeight: 60, preferredHeight: 60);
+
+            var wipe = UIBuilder.Button(list, "WIPE ALL DATA (dev)", Wipe, UITheme.Negative, UITheme.SmallSize);
+            UIBuilder.Sizing(wipe.gameObject, minHeight: 60, preferredHeight: 60);
+#endif
         }
 
         public override async void OnShow()
@@ -85,10 +93,13 @@ namespace Daybreak.Client.UI
 
         private async void Save()
         {
+            if (string.IsNullOrWhiteSpace(_nameInput.text)) { _status.text = "Enter a name first."; return; }
             _status.text = "Saving...";
             try
             {
-                await DataService.SaveProfileAsync(new ProfileDto { displayName = _nameInput.text, colorHex = _color, emoji = _badge });
+                var r = await CloudCodeService.SaveProfileAsync(
+                    new ProfileDto { displayName = _nameInput.text, colorHex = _color, emoji = _badge });
+                if (!r.ok) { _status.text = r.error; return; }
                 var saved = ProfileRules.Sanitize(new ProfileDto { displayName = _nameInput.text, colorHex = _color, emoji = _badge });
                 _nameInput.text = saved.displayName; _color = saved.colorHex;
                 _status.text = "Saved as \"" + saved.displayName + "\".";
@@ -96,6 +107,31 @@ namespace Daybreak.Client.UI
             }
             catch (Exception e) { _status.text = "Save failed: " + e.Message; }
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private async void ResetOnboarding()
+        {
+            _status.text = "Clearing...";
+            try
+            {
+                await DataService.ClearProfileAsync();
+                _status.text = "Cleared. Stop and press Play again to see the welcome screen.";
+            }
+            catch (Exception e) { _status.text = "Reset failed: " + e.Message; }
+        }
+
+        private async void Wipe()
+        {
+            _status.text = "Wiping all data...";
+            try
+            {
+                var msg = await CloudCodeService.WipeAllAsync();
+                await DataService.ClearProfileAsync();
+                _status.text = msg;
+            }
+            catch (Exception e) { _status.text = "Wipe failed: " + e.Message; }
+        }
+#endif
 
         private void Head(Transform parent, string text)
         {

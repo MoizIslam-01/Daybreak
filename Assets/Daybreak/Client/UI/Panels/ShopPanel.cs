@@ -27,8 +27,10 @@ namespace Daybreak.Client.UI
 
             _header = UIBuilder.Label(top.transform, "", UITheme.SmallSize, UITheme.Text);
             UIBuilder.Sizing(_header.gameObject, minHeight: 60, preferredHeight: 60);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             var grant = UIBuilder.Button(top.transform, "Grant 100 Sparks (dev)", Grant, UITheme.SurfaceAlt, UITheme.SmallSize);
             UIBuilder.Sizing(grant.gameObject, minHeight: 56, preferredHeight: 56);
+#endif
 
             var listHost = new GameObject("ListHost", typeof(RectTransform));
             listHost.transform.SetParent(content, false);
@@ -85,11 +87,13 @@ namespace Daybreak.Client.UI
             UIBuilder.Rebuild(_list);
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         private async void Grant()
         {
             try { await CloudCodeService.GrantSparksAsync(100); await OnShowAsync(); }
             catch (Exception e) { _header.text = "Grant failed: " + e.Message; }
         }
+#endif
 
         private async void Buy(string id)
         {

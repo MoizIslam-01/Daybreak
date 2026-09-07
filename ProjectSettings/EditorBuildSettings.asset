@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
   - enabled: 1
+    path: Assets/Daybreak/Scenes/Main.unity
+    guid: d65b7de7bc3520d4991b4adaa5c6ce1e
+  - enabled: 1
     path: Assets/Daybreak/Scenes/Boot.unity
     guid: 7053fa870b2ca6e48a7e46e799664731
   m_configObjects:

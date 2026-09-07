@@ -21,12 +21,17 @@ namespace Daybreak.Client
         public const string LockSquadEndpoint = "LockSquad";
         public const string ResolveDayEndpoint = "ResolveDay";
         public const string ResetRosterEndpoint = "ResetRoster";
+        public const string WipeAllEndpoint = "WipeAll";
         public const string CreateTeamEndpoint = "CreateTeam";
         public const string JoinTeamEndpoint = "JoinTeam";
         public const string LeaveTeamEndpoint = "LeaveTeam";
         public const string ListTeamsEndpoint = "ListTeams";
         public const string GetStandingsEndpoint = "GetStandings";
         public const string GetChampionsEndpoint = "GetChampions";
+        public const string SaveProfileEndpoint = "SaveProfile";
+
+        [Serializable]
+        public class ProfileResult { public bool ok; public string error; }
         public const string BuyCosmeticEndpoint = "BuyCosmetic";
         public const string EquipTitleEndpoint = "EquipTitle";
         public const string GrantSparksEndpoint = "GrantSparks";
@@ -75,6 +80,18 @@ namespace Daybreak.Client
 #if DAYBREAK_UGS_CLOUDCODE
             return await Unity.Services.CloudCode.CloudCodeService.Instance
                 .CallModuleEndpointAsync<string>(ModuleName, ResetRosterEndpoint, new Dictionary<string, object>());
+#else
+            await Task.Yield();
+            return "stub";
+#endif
+        }
+
+        /// <summary>Dev/admin: full reset (registries + your player data) for a clean launch.</summary>
+        public static async Task<string> WipeAllAsync()
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<string>(ModuleName, WipeAllEndpoint, new Dictionary<string, object>());
 #else
             await Task.Yield();
             return "stub";
@@ -162,6 +179,19 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return new StandingsDto { players = new StandingDto[0], teams = new TeamStandingDto[0] };
+#endif
+        }
+
+        /// <summary>Saves the profile server-side (enforces unique display name). Returns ok/error.</summary>
+        public static async Task<ProfileResult> SaveProfileAsync(ProfileDto profile)
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var args = new Dictionary<string, object> { { "profileJson", JsonUtility.ToJson(profile) } };
+            return await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<ProfileResult>(ModuleName, SaveProfileEndpoint, args);
+#else
+            await Task.Yield();
+            return new ProfileResult { ok = false, error = "no backend" };
 #endif
         }
 

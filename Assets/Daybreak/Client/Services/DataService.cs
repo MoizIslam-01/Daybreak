@@ -74,6 +74,22 @@ namespace Daybreak.Client
 #endif
         }
 
+        /// <summary>
+        /// Dev/testing: write a genuinely empty profile (bypassing sanitize) so the first-run
+        /// onboarding gate triggers again. Normal saves never produce an empty display name.
+        /// </summary>
+        public static async Task ClearProfileAsync()
+        {
+            var empty = new ProfileDto { displayName = "", colorHex = "", emoji = "", teamId = "", title = "" };
+#if DAYBREAK_UGS_CLOUDSAVE
+            var data = new Dictionary<string, object> { { ProfileKey, JsonUtility.ToJson(empty) } };
+            await CloudSaveService.Instance.Data.Player.SaveAsync(data);
+#else
+            await Task.Yield();
+            _stubProfile = empty;
+#endif
+        }
+
         public static async Task<ProfileDto> LoadProfileAsync()
         {
 #if DAYBREAK_UGS_CLOUDSAVE

@@ -30,21 +30,39 @@ namespace Daybreak.Client.UI
 
         public string PlayerId { get; private set; }
 
+        private bool _built;
+
         private async void Start()
         {
-            BuildChrome();
-            RegisterPanels();
-
-            SetStatus("Signing in...");
             try
             {
                 PlayerId = await AuthService.SignInAnonymouslyAsync();
                 NotificationService.ScheduleDailyResultReminder();
-                await RefreshSparks();
-                SetStatus("");
-            }
-            catch (Exception e) { SetStatus("Sign-in failed: " + e.Message); }
 
+                // First run (no profile yet) → onboarding; otherwise straight into the app.
+                var profile = await DataService.LoadProfileAsync();
+                if (profile == null || string.IsNullOrEmpty(profile.displayName))
+                    new OnboardingScreen().Show(EnterApp);
+                else
+                    EnterApp();
+            }
+            catch (Exception e)
+            {
+                EnterApp();
+                SetStatus("Sign-in issue: " + e.Message);
+            }
+        }
+
+        private async void EnterApp()
+        {
+            if (!_built)
+            {
+                BuildChrome();
+                RegisterPanels();
+                _built = true;
+            }
+            _canvas.gameObject.SetActive(true);
+            await RefreshSparks();
             Show(0); // Home
         }
 
