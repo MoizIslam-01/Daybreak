@@ -28,8 +28,30 @@ the scattered one-per-screen test scenes.
 Once navigation reads well, Phase B replaces each `StubPanel` with the real screen (porting the
 logic from the existing IMGUI screens into `UIBuilder` widgets).
 
-## Phase B — Port screens (next)
-Home, Squad builder (→ real daily lock), Leaderboard, Team, Shop, Profile/onboarding.
+## Phase B — Port screens ✅ (done)
 
-## Phase C — Android build (later)
-Player settings (package name, icon, portrait), notification permission, guard/remove dev buttons.
+All six tabs are real uGUI panels in the one Main scene:
+
+- **Home** — this week's modifier, your record, last Dawn Crown, and battle rows; **Watch** plays the
+  replay in-app (world-space renderer overlaid, aspect-fit camera so it isn't clipped in portrait,
+  Back button).
+- **Squad** — 2×3 grid placement from the 12-unit roster, tactic picker, live synergy preview, and
+  **LOCK SQUAD** wired to the real daily `LockSquad` (earns Sparks).
+- **Board** — Individual/Teams standings tabs with names, colors, titles, last champion.
+- **Team** — your team, create (name + banner color), joinable list, leave.
+- **Shop** — buy/equip title cosmetics with Sparks (+ dev Grant).
+- **Me** — name, accent color, badge, live preview, save.
+
+Reusable toolkit: `UITheme`, `UIBuilder` (canvas, panels, TMP labels/buttons, scroll list with
+`RectMask2D`, input fields, rows), `AppShell` (nav + panel switching + replay overlay), `AppPanel`.
+
+The old one-per-screen test scenes (Practice, Home, Teams, Leaderboard, Shop, Profile, Replay) are
+now redundant for players — keep them as dev harnesses or delete later.
+
+## Phase C — Android build + hardening (next)
+- Player settings: package name, icon, **portrait** orientation, min SDK.
+- Notification permission prompt (Android 13+) wired to `NotificationService`.
+- Guard/remove dev-only affordances for release: Shop's **Grant Sparks**, the `GrantSparks` and
+  `ResetRoster` Cloud Code endpoints, the `New test player` path, and the legacy test scenes.
+- Access Control on cross-player Cloud Code endpoints.
+- Build an APK and install on a device.

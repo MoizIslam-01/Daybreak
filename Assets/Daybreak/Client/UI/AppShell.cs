@@ -90,11 +90,11 @@ namespace Daybreak.Client.UI
         {
             // Phase A: stubs so navigation + layout can be verified. Phase B swaps in real panels.
             AddPanel(new HomePanel());
-            AddPanel(new StubPanel("Squad", "Build and lock your daily squad here."));
-            AddPanel(new StubPanel("Board", "Weekly individual + team standings."));
-            AddPanel(new StubPanel("Team", "Create or join a team."));
-            AddPanel(new StubPanel("Shop", "Spend Sparks on cosmetics."));
-            AddPanel(new StubPanel("Me", "Your profile: name, color, badge."));
+            AddPanel(new SquadPanel());
+            AddPanel(new BoardPanel());
+            AddPanel(new TeamPanel());
+            AddPanel(new ShopPanel());
+            AddPanel(new MePanel());
 
             for (int i = 0; i < _panels.Count; i++)
             {
