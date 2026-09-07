@@ -20,6 +20,14 @@ namespace Daybreak.Sim
             Title("mastermind", "Mastermind", 150),
         };
 
+        /// <summary>The weekly champion cosmetic — dated, ungrindable, granted only on reset.</summary>
+        public const string DawnCrownPrefix = "dawn_crown_w";
+
+        public static string DawnCrownId(int week) => DawnCrownPrefix + week;
+
+        public static bool IsDawnCrown(string id) =>
+            !string.IsNullOrEmpty(id) && id.StartsWith(DawnCrownPrefix);
+
         public static IReadOnlyList<CosmeticDto> All() => Items;
 
         public static CosmeticDto Get(string id)
@@ -28,6 +36,15 @@ namespace Daybreak.Sim
                 foreach (var c in Items)
                     if (c.id == id) return c;
             return null;
+        }
+
+        /// <summary>Human-readable name for any cosmetic id, including the special Dawn Crown ids.</summary>
+        public static string DisplayName(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return "";
+            if (IsDawnCrown(id)) return "Dawn Crown (Wk " + id.Substring(DawnCrownPrefix.Length) + ")";
+            var c = Get(id);
+            return c != null ? c.name : "";
         }
 
         private static CosmeticDto Title(string id, string name, int cost) =>

@@ -43,6 +43,24 @@ namespace Daybreak.Sim
         public CosmeticDto[] items;
     }
 
+    /// <summary>A weekly champion record — the "hall of fame" entry granted on reset.</summary>
+    [Serializable]
+    public sealed class ChampionDto
+    {
+        public int week;
+        public string playerId;
+        public string name;
+        public int wins;
+        public string topTeamId;
+        public string topTeamName;
+    }
+
+    [Serializable]
+    public sealed class ChampionListDto
+    {
+        public ChampionDto[] champions;
+    }
+
     /// <summary>A team: a named group whose members' wins roll up to a team score.</summary>
     [Serializable]
     public sealed class TeamDto

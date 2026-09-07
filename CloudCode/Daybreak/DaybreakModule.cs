@@ -30,6 +30,7 @@ namespace Daybreak.CloudCode
         private const string RosterKey = "players";
         private const string WeeklyKey = "weekly";
         private const string WalletKey = "wallet";
+        private const string ChampionsKey = "champions";
         private const string LeaderboardId = "weekly_wins";
         private const int SparksPerLock = 10;
         private const int SparksPerWin = 2;
@@ -88,6 +89,11 @@ namespace Daybreak.CloudCode
         {
             int day = GameCalendar.ResolveDayFor(DateTime.UtcNow);
             var roster = await ReadRoster(ctx, api);
+
+            // Before touching this week's records, close out last week if it hasn't been crowned.
+            // On the first resolve of a new week the weekly records still hold last week's totals
+            // (UpdateWeekly hasn't reset them yet), so we can finalize accurately here.
+            await FinalizeWeekIfNeeded(ctx, api, GameCalendar.WeekNumber(day) - 1, roster);
 
             var entries = new List<PlayerEntry>();
             var squadMap = new Dictionary<string, SquadDto>();   // to embed squads in replays
@@ -253,6 +259,100 @@ namespace Daybreak.CloudCode
             var teams = (await ReadTeams(ctx, api)).teams;
             var standings = StandingsCalculator.Compute(week, inputs, teams);
             return Json.To(standings);
+        }
+
+        // ---- weekly reset + Dawn Crown (M6.3) ----
+
+        /// <summary>
+        /// Crowns the champion of a completed week, once. Idempotent: it records the week in the
+        /// champions list and skips if already present. Runs at the start of the first resolve of a
+        /// new week, while last week's weekly records are still intact.
+        /// </summary>
+        private async Task FinalizeWeekIfNeeded(IExecutionContext ctx, IGameApiClient api, int week, List<string> roster)
+        {
+            if (week < 0) return;
+
+            var champions = await ReadChampions(ctx, api);
+            foreach (var c in champions.champions ?? new ChampionDto[0])
+                if (c.week == week) return; // already crowned
+
+            // Gather that week's standings from the (still-intact) weekly records.
+            var inputs = new List<PlayerStandingInput>();
+            foreach (var playerId in roster)
+            {
+                var weekly = Json.From<WeeklyRecord>(await ReadPlayerItem(ctx, api, playerId, WeeklyKey));
+                if (weekly == null || weekly.week != week) continue;
+
+                var profile = ProfileRules.Sanitize(Json.From<ProfileDto>(await ReadPlayerItem(ctx, api, playerId, ProfileKey)));
+                inputs.Add(new PlayerStandingInput
+                {
+                    PlayerId = playerId, Name = profile.displayName, ColorHex = profile.colorHex,
+                    TeamId = profile.teamId, Title = profile.title, Wins = weekly.wins, RemainingHp = weekly.remainingHp
+                });
+            }
+            if (inputs.Count == 0) return; // nobody played that week; nothing to crown
+
+            var teams = (await ReadTeams(ctx, api)).teams;
+            var standings = StandingsCalculator.Compute(week, inputs, teams);
+
+            var champ = standings.players[0];
+            var topTeam = (standings.teams != null && standings.teams.Length > 0) ? standings.teams[0] : null;
+
+            // Grant the dated Dawn Crown to the champion (owned + auto-equipped as their title).
+            var crownId = CosmeticCatalog.DawnCrownId(week);
+            var wallet = await ReadWallet(ctx, api, champ.playerId);
+            if (!CosmeticRules.Owns(wallet, crownId))
+            {
+                var owned = new List<string>(wallet.owned ?? new string[0]) { crownId };
+                wallet.owned = owned.ToArray();
+                await WriteWallet(ctx, api, champ.playerId, wallet);
+            }
+            var champProfile = ProfileRules.Sanitize(Json.From<ProfileDto>(await ReadPlayerItem(ctx, api, champ.playerId, ProfileKey)));
+            champProfile.title = crownId;
+            await api.CloudSaveData.SetItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, champ.playerId,
+                new SetItemBody(ProfileKey, Json.To(champProfile)));
+
+            // Record the champion in the hall of fame.
+            var list = new List<ChampionDto>(champions.champions ?? new ChampionDto[0])
+            {
+                new ChampionDto
+                {
+                    week = week, playerId = champ.playerId, name = champ.name, wins = champ.wins,
+                    topTeamId = topTeam?.teamId ?? "", topTeamName = topTeam?.name ?? ""
+                }
+            };
+            await WriteChampions(ctx, api, list);
+
+            _logger.LogInformation("Week {Week} crowned: {Name} ({Wins} wins).", week, champ.name, champ.wins);
+        }
+
+        [CloudCodeFunction("GetChampions")]
+        public async Task<string> GetChampions(IExecutionContext ctx, IGameApiClient api)
+        {
+            return Json.To(await ReadChampions(ctx, api));
+        }
+
+        private async Task<ChampionListDto> ReadChampions(IExecutionContext ctx, IGameApiClient api)
+        {
+            try
+            {
+                var res = await api.CloudSaveData.GetCustomItemsAsync(ctx, ctx.ServiceToken, ctx.ProjectId,
+                    RosterCustomId, new List<string> { ChampionsKey });
+                var raw = res.Data.Results.FirstOrDefault(r => r.Key == ChampionsKey)?.Value?.ToString();
+                return Json.From<ChampionListDto>(raw) ?? new ChampionListDto { champions = new ChampionDto[0] };
+            }
+            catch (ApiException e)
+            {
+                _logger.LogWarning("Champions read failed (treating as empty): {Err}", e.Message);
+                return new ChampionListDto { champions = new ChampionDto[0] };
+            }
+        }
+
+        private async Task WriteChampions(IExecutionContext ctx, IGameApiClient api, List<ChampionDto> champions)
+        {
+            var dto = new ChampionListDto { champions = champions.ToArray() };
+            await api.CloudSaveData.SetCustomItemAsync(ctx, ctx.ServiceToken, ctx.ProjectId, RosterCustomId,
+                new SetItemBody(ChampionsKey, Json.To(dto)));
         }
 
         // ---- Sparks currency (M6): reward showing up over winning ----

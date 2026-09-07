@@ -13,6 +13,7 @@ namespace Daybreak.Client
         private enum Tab { Individual, Teams }
 
         private StandingsDto _standings;
+        private ChampionDto _lastChampion;
         private Tab _tab = Tab.Individual;
         private string _status = "Loading...";
         private Vector2 _scroll;
@@ -33,6 +34,8 @@ namespace Daybreak.Client
             try
             {
                 _standings = await CloudCodeService.GetStandingsAsync();
+                var champs = await CloudCodeService.GetChampionsAsync();
+                _lastChampion = MostRecent(champs);
                 _status = "Week " + _standings.week;
             }
             catch (Exception e) { _status = "Load failed: " + e.Message; }
@@ -50,6 +53,14 @@ namespace Daybreak.Client
             if (GUILayout.Button("Refresh", GUILayout.Width(90))) _ = Refresh();
             GUILayout.EndHorizontal();
             GUILayout.Label(_status);
+
+            if (_lastChampion != null)
+            {
+                var crown = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+                crown.normal.textColor = new Color(0.95f, 0.85f, 0.3f);
+                GUILayout.Label("Last Dawn Crown (Wk " + _lastChampion.week + "): " + _lastChampion.name
+                    + " — " + _lastChampion.wins + " wins", crown);
+            }
 
             GUILayout.Space(6);
             _scroll = GUILayout.BeginScrollView(_scroll);
@@ -107,10 +118,14 @@ namespace Daybreak.Client
             }
         }
 
-        private static string TitleName(string id)
+        private static string TitleName(string id) => CosmeticCatalog.DisplayName(id);
+
+        private static ChampionDto MostRecent(ChampionListDto list)
         {
-            var c = CosmeticCatalog.Get(id);
-            return c != null ? c.name : "";
+            if (list?.champions == null || list.champions.Length == 0) return null;
+            var best = list.champions[0];
+            foreach (var c in list.champions) if (c.week > best.week) best = c;
+            return best;
         }
 
         private static Color Parse(string hex) =>

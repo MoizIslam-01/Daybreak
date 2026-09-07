@@ -26,6 +26,7 @@ namespace Daybreak.Client
         public const string LeaveTeamEndpoint = "LeaveTeam";
         public const string ListTeamsEndpoint = "ListTeams";
         public const string GetStandingsEndpoint = "GetStandings";
+        public const string GetChampionsEndpoint = "GetChampions";
         public const string BuyCosmeticEndpoint = "BuyCosmetic";
         public const string EquipTitleEndpoint = "EquipTitle";
         public const string GrantSparksEndpoint = "GrantSparks";
@@ -161,6 +162,19 @@ namespace Daybreak.Client
 #else
             await Task.Yield();
             return new StandingsDto { players = new StandingDto[0], teams = new TeamStandingDto[0] };
+#endif
+        }
+
+        public static async Task<ChampionListDto> GetChampionsAsync()
+        {
+#if DAYBREAK_UGS_CLOUDCODE
+            var json = await Unity.Services.CloudCode.CloudCodeService.Instance
+                .CallModuleEndpointAsync<string>(ModuleName, GetChampionsEndpoint, new Dictionary<string, object>());
+            var c = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<ChampionListDto>(json);
+            return c ?? new ChampionListDto { champions = new ChampionDto[0] };
+#else
+            await Task.Yield();
+            return new ChampionListDto { champions = new ChampionDto[0] };
 #endif
         }
 

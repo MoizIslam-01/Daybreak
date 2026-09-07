@@ -104,10 +104,18 @@ Leaderboards, Economy · Firebase Cloud Messaging for push · .NET 9 on the serv
 | **M3** | **Squad builder + practice** | Full offline loop: build → watch | ✅ Complete |
 | **M4** | **Server resolve loop** | Two players lock squads and wake to correct results — **the game is live** | ✅ Complete |
 | **M5** | **Social + notifications** | Teams, leaderboards, reminder on resolve, auto-repeat for no-shows | ✅ Complete |
-| M6 | Rewards & liveops | A full weekly cycle runs itself end to end | ⬜ Next |
+| **M6** | **Rewards & liveops** | A full weekly cycle runs itself end to end | ✅ Complete |
 
 Post-launch ideas: active abilities, a second tag per unit, more units and weekly modifiers,
 seasonal cosmetics.
+
+### What M6 delivered — a self-running weekly cycle
+
+- **Weekly modifier rotation** — the four M1 modifiers cycle by week and apply in the resolve
+- **Sparks** currency in Cloud Save — +10/day for locking, +2/win; rewards showing up over winning
+- **Cosmetic shop** — buy and equip title flair with Sparks; purely visual
+- **Weekly reset + Dawn Crown** — the week's #1 is crowned with a dated, ungrindable cosmetic
+  (folded into the daily resolve, no extra trigger); standings roll over automatically
 
 ### What M5 delivered — a group game
 
