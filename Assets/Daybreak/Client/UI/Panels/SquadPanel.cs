@@ -99,7 +99,29 @@ namespace Daybreak.Client.UI
             UIBuilder.Rebuild(_roster);
         }
 
-        public override void OnShow() => Refresh();
+        private bool _loaded;
+
+        public override async void OnShow()
+        {
+            Refresh();
+            if (_loaded) return; // load the locked squad once per session; keep in-session edits after
+            _loaded = true;
+            try
+            {
+                var dto = await DataService.LoadLockedSquadAsync();
+                if (dto != null && dto.units != null && dto.units.Length > 0)
+                {
+                    var squad = SquadCodec.FromDto(dto);
+                    _draft.ClearAll();
+                    foreach (var p in squad.Units)
+                        _draft.Place(SquadDraft.SlotIndex(p.Row, p.Col), p.UnitId, out _);
+                    _draft.Tactic = squad.Tactic;
+                    _status.text = "Showing your locked squad — edit and LOCK to change it.";
+                    Refresh();
+                }
+            }
+            catch { /* no locked squad yet, or parse failed — leave the empty draft */ }
+        }
 
         // ---- interaction ----
 
