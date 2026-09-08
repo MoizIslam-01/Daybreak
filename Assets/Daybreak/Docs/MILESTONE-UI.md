@@ -55,7 +55,8 @@ now redundant for players — keep them as dev harnesses or delete later.
   Shop's **Grant Sparks**, and the Me panel's **Reset onboarding** + **Wipe all data**. They show in
   the editor and Development Builds, and vanish from a normal release APK.
 - **Unique display names** enforced server-side (`SaveProfile` + name registry).
-- Notification runtime permission is now requested (Android 13+).
+- Notification runtime permission (Android 13+) is a follow-up — the request API name differs by
+  Mobile Notifications version; scheduling works once the permission is granted in system settings.
 - Still owed (dashboard): **Access Control** on cross-player endpoints (`WipeAll`, `GrantSparks`,
   `ResetRoster`, `ResolveDay`) so only you/the scheduler can call them.
 

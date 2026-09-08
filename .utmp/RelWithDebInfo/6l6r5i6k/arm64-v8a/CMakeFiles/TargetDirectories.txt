@@ -1,0 +1,8 @@
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/CMakeFiles/edit_cache.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/CMakeFiles/rebuild_cache.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/GameActivity/CMakeFiles/game.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/GameActivity/CMakeFiles/edit_cache.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/GameActivity/CMakeFiles/rebuild_cache.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/FramePacing/CMakeFiles/swappywrapper.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/FramePacing/CMakeFiles/edit_cache.dir
+E:/Daybreak/.utmp/RelWithDebInfo/6l6r5i6k/arm64-v8a/FramePacing/CMakeFiles/rebuild_cache.dir

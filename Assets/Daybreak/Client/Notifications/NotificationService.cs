@@ -21,8 +21,9 @@ namespace Daybreak.Client
         public static void ScheduleDailyResultReminder()
         {
 #if DAYBREAK_MOBILE_NOTIFICATIONS && UNITY_ANDROID
-            // Android 13+ requires runtime permission; this prompts once (no-op on older versions).
-            AndroidNotificationCenter.RequestNotificationPermission();
+            // Note: on Android 13+ the OS gates notification display until the POST_NOTIFICATIONS
+            // permission is granted. Requesting it at runtime is a follow-up (the API name differs
+            // across Mobile Notifications versions); scheduling still works once permission is on.
 
             var channel = new AndroidNotificationChannel
             {
