@@ -31,9 +31,29 @@ chat. Design source of truth: `Assets/daybreak-game-design-and-build-guide.md`.
   changes (`Window → Deployment → Deploy`).
 
 ## Open / next
+- **[TOP PRIORITY] Leaderboard weekly-reset gap bug.** Playtest finding: the morning after a resolve
+  the Individual board showed 0W for everyone, while Home still showed yesterday's battles/replays
+  (the team board looked correct — unconfirmed, needs checking against actual Cloud Save data).
+  Cause: `GetStandings` reads each player's *current-week* `weekly` record (keyed by week number);
+  when the week rolls over, those are empty until that night's resolve repopulates them, so the
+  board shows an all-zero gap. Home is unaffected (separate per-day `dayResult`).
+  Fix intent: standings should fall back to the most recent week that actually has results (don't
+  show an all-zero board during the reset window). Look at `GetStandings` in
+  `CloudCode/Daybreak/DaybreakModule.cs`, the `weekly` WeeklyRecord logic, and
+  `StandingsCalculator` in the sim. Redeploy the module after. Consider verifying the individual-vs-
+  team discrepancy by inspecting a player's `weekly` value in Player Management first.
 - **Account linking** (Unity Player Accounts or Google Play Games) so accounts survive reinstall —
-  anonymous auth loses the account (and leaves its name reserved) on uninstall. Recommended next.
+  anonymous auth loses the account (and leaves its name reserved) on uninstall.
 - Dashboard: Access Control on cross-player endpoints (WipeAll, GrantSparks, ResetRoster, ResolveDay).
 - Polish: real sprites/UI art, vertical (portrait) replay layout, app-store polish.
 - Before friends test: redeploy module, run Me → WIPE ALL DATA (dev), build with Development Build
-  OFF. Decisions: resolve 20:00 UTC, ~10-30 players, Android first, no Firebase (local notifications).
+  OFF.
+
+## Locked decisions
+- Resolve time: **20:00 UTC** (= 1 AM the user's local; kept intentionally). ~10-30 players.
+  Android first. No Firebase — local notifications. Currency/leaderboards in Cloud Save, not UGS
+  Economy/Leaderboards service.
+
+## Known-good playtested behaviour
+- Daily auto-resolve fires (at 20:00 UTC), battles + Home replays + records all work.
+- Squad panel now loads the existing locked squad on open (fixed).
