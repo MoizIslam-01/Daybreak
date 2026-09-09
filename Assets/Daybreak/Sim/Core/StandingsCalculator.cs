@@ -25,6 +25,37 @@ namespace Daybreak.Sim
     /// </summary>
     public static class StandingsCalculator
     {
+        /// <summary>
+        /// Picks which week the board should actually display.
+        ///
+        /// Weekly records are stored one per player, keyed by week, and are only (re)written by the
+        /// nightly resolve. So between a week rolling over at midnight UTC and that night's 20:00
+        /// UTC resolve, no record matches the current week — computing standings against it would
+        /// show an all-zero board for up to 20 hours even though last week's results are sitting
+        /// right there. When nothing has been recorded for the current week yet, fall back to the
+        /// most recent earlier week that does have results.
+        /// </summary>
+        /// <param name="currentWeek">The week the clock says we are in.</param>
+        /// <param name="recordedWeeks">The week number on each player's stored weekly record.</param>
+        /// <returns>
+        /// <paramref name="currentWeek"/> as soon as any record belongs to it (a zero there is a
+        /// real score, not a gap), otherwise the highest recorded week below it — and
+        /// <paramref name="currentWeek"/> again when there is nothing older to fall back to.
+        /// </returns>
+        public static int ResolveDisplayWeek(int currentWeek, IReadOnlyList<int> recordedWeeks)
+        {
+            if (recordedWeeks == null) return currentWeek;
+
+            int best = int.MinValue;
+            for (int i = 0; i < recordedWeeks.Count; i++)
+            {
+                int w = recordedWeeks[i];
+                if (w == currentWeek) return currentWeek;   // the new week has already scored
+                if (w < currentWeek && w > best) best = w;  // ignore anything ahead of the clock
+            }
+            return best == int.MinValue ? currentWeek : best;
+        }
+
         public static StandingsDto Compute(int week, IReadOnlyList<PlayerStandingInput> players,
             IReadOnlyList<TeamDto> teams)
         {

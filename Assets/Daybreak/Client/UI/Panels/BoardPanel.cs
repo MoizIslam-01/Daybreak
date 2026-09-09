@@ -68,6 +68,9 @@ namespace Daybreak.Client.UI
             _teamBtn.targetGraphic.color = _tab == Tab.Teams ? UITheme.Accent : UITheme.SurfaceAlt;
 
             string h = "Week " + (_standings != null ? _standings.week : 0);
+            // The server falls back to the last week with results while the new week is still
+            // empty (midnight UTC until that night's resolve) — say so rather than looking stale.
+            if (_standings != null && !_standings.isCurrentWeek) h += " (final)";
             if (_champ != null) h += "   Last crown: " + _champ.name;
             _header.text = h;
 

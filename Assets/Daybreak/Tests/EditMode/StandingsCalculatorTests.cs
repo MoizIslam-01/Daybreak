@@ -73,5 +73,62 @@ namespace Daybreak.Tests
             Assert.AreEqual(0, s.players.Length);
             Assert.AreEqual(0, s.teams.Length);
         }
+
+        // ---- display-week fallback (weekly-reset gap) ----
+
+        [Test]
+        public void DisplayWeek_IsCurrentWeek_WhenItHasAnyRecord()
+        {
+            Assert.AreEqual(5, StandingsCalculator.ResolveDisplayWeek(5, new List<int> { 4, 5, 4 }));
+        }
+
+        [Test]
+        public void DisplayWeek_IsCurrentWeek_EvenIfOnlyOnePlayerHasScoredIt()
+        {
+            Assert.AreEqual(5, StandingsCalculator.ResolveDisplayWeek(5, new List<int> { 3, 3, 5 }));
+        }
+
+        [Test]
+        public void DisplayWeek_FallsBackToMostRecentWeekWithResults()
+        {
+            // The reset window: week 5 has begun but no resolve has written a week-5 record yet.
+            Assert.AreEqual(4, StandingsCalculator.ResolveDisplayWeek(5, new List<int> { 4, 4, 2 }));
+        }
+
+        [Test]
+        public void DisplayWeek_FallsBackAcrossAGapOfSkippedWeeks()
+        {
+            Assert.AreEqual(2, StandingsCalculator.ResolveDisplayWeek(7, new List<int> { 2, 1 }));
+        }
+
+        [Test]
+        public void DisplayWeek_IsCurrentWeek_WhenThereAreNoRecordsAtAll()
+        {
+            Assert.AreEqual(3, StandingsCalculator.ResolveDisplayWeek(3, new List<int>()));
+            Assert.AreEqual(3, StandingsCalculator.ResolveDisplayWeek(3, null));
+        }
+
+        [Test]
+        public void DisplayWeek_IgnoresWeeksAheadOfTheClock()
+        {
+            // Bad/skewed data shouldn't drag the board into a week that hasn't happened.
+            Assert.AreEqual(3, StandingsCalculator.ResolveDisplayWeek(4, new List<int> { 9, 3 }));
+            Assert.AreEqual(4, StandingsCalculator.ResolveDisplayWeek(4, new List<int> { 9 }));
+        }
+
+        [Test]
+        public void FallbackWeek_ShowsThatWeeksWins_NotZeroes()
+        {
+            // What the bug looked like end-to-end: stale week-4 records, clock says week 5.
+            var recorded = new List<int> { 4, 4 };
+            int week = StandingsCalculator.ResolveDisplayWeek(5, recorded);
+
+            var players = new List<PlayerStandingInput> { P("p1", "Alice", "", 3, 20), P("p2", "Bob", "", 1, 5) };
+            var s = StandingsCalculator.Compute(week, players, null);
+
+            Assert.AreEqual(4, s.week);
+            Assert.AreEqual("Alice", s.players[0].name);
+            Assert.AreEqual(3, s.players[0].wins);
+        }
     }
 }

@@ -226,22 +226,39 @@ namespace Daybreak.CloudCode
         }
 
         /// <summary>
-        /// Returns the current week's individual + team standings, computed from each player's
-        /// weekly Cloud Save record. A JSON string (field-based DTOs don't survive property-only
-        /// return serialization); the client parses it with JsonUtility.
+        /// Returns the individual + team standings, computed from each player's weekly Cloud Save
+        /// record. Normally that's the current week; during the reset window it's the most recent
+        /// week that actually has results (see below). A JSON string (field-based DTOs don't survive
+        /// property-only return serialization); the client parses it with JsonUtility.
         /// </summary>
         [CloudCodeFunction("GetStandings")]
         public async Task<string> GetStandings(IExecutionContext ctx, IGameApiClient api)
         {
-            int week = GameCalendar.WeekNumber(GameCalendar.ResolveDayFor(DateTime.UtcNow));
+            int currentWeek = GameCalendar.WeekNumber(GameCalendar.ResolveDayFor(DateTime.UtcNow));
             var roster = await ReadRoster(ctx, api);
+
+            // Read every weekly record first, then decide which week to show. Records are only
+            // rewritten by the nightly resolve, so from the moment a week rolls over at midnight UTC
+            // until that night's 20:00 resolve, nothing matches the current week and computing
+            // against it would show an all-zero board all morning. ResolveDisplayWeek falls back to
+            // the last week with results in that window.
+            var weeklyByPlayer = new Dictionary<string, WeeklyRecord>();
+            var recordedWeeks = new List<int>();
+            foreach (var playerId in roster)
+            {
+                var weekly = Json.From<WeeklyRecord>(await ReadPlayerItem(ctx, api, playerId, WeeklyKey));
+                if (weekly == null) continue;
+                weeklyByPlayer[playerId] = weekly;
+                recordedWeeks.Add(weekly.week);
+            }
+
+            int week = StandingsCalculator.ResolveDisplayWeek(currentWeek, recordedWeeks);
 
             var inputs = new List<PlayerStandingInput>();
             foreach (var playerId in roster)
             {
-                var weekly = Json.From<WeeklyRecord>(await ReadPlayerItem(ctx, api, playerId, WeeklyKey));
-                int wins = (weekly != null && weekly.week == week) ? weekly.wins : 0;
-                int hp = (weekly != null && weekly.week == week) ? weekly.remainingHp : 0;
+                // A player with no record for the displayed week simply scored nothing that week.
+                bool counts = weeklyByPlayer.TryGetValue(playerId, out var weekly) && weekly.week == week;
 
                 var profile = ProfileRules.Sanitize(Json.From<ProfileDto>(await ReadPlayerItem(ctx, api, playerId, ProfileKey)));
                 inputs.Add(new PlayerStandingInput
@@ -251,13 +268,17 @@ namespace Daybreak.CloudCode
                     ColorHex = profile.colorHex,
                     TeamId = profile.teamId,
                     Title = profile.title,
-                    Wins = wins,
-                    RemainingHp = hp
+                    Wins = counts ? weekly.wins : 0,
+                    RemainingHp = counts ? weekly.remainingHp : 0
                 });
             }
 
             var teams = (await ReadTeams(ctx, api)).teams;
             var standings = StandingsCalculator.Compute(week, inputs, teams);
+            standings.isCurrentWeek = week == currentWeek;
+            if (!standings.isCurrentWeek)
+                _logger.LogInformation("GetStandings: week {Current} has no results yet, showing week {Shown}.",
+                    currentWeek, week);
             return Json.To(standings);
         }
 

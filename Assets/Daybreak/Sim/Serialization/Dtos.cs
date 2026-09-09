@@ -106,6 +106,12 @@ namespace Daybreak.Sim
     public sealed class StandingsDto
     {
         public int week;
+        /// <summary>
+        /// False when <see cref="week"/> is a fallback — the current week has no results yet (the
+        /// window between a week rolling over and that night's resolve), so these are the previous
+        /// week's final standings and the UI should say so.
+        /// </summary>
+        public bool isCurrentWeek = true;
         public StandingDto[] players;
         public TeamStandingDto[] teams;
     }
